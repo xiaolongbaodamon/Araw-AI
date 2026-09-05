@@ -22,13 +22,11 @@ import {
 interface AuthScreenProps {
   onSuccess: () => void;
   onOpenRules?: () => void;
-  onSelectPreset?: (preset: 'student' | 'freelancer' | 'professional') => void;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({
   onSuccess,
   onOpenRules: _onOpenRules,
-  onSelectPreset,
 }) => {
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [loading, setLoading] = useState(false);
@@ -67,9 +65,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setLoading(true);
     try {
       await signInAnonymously(auth);
-      if (onSelectPreset) {
-        onSelectPreset('professional');
-      }
       onSuccess();
     } catch (err: any) {
       console.error('Guest Sign-In Error:', err);
@@ -132,9 +127,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
         if (cred.user && name.trim()) {
           await updateProfile(cred.user, { displayName: name.trim() });
-        }
-        if (onSelectPreset) {
-          onSelectPreset(role);
         }
         onSuccess();
       }

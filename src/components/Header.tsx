@@ -7,7 +7,6 @@ interface HeaderProps {
   onOpenCoach: () => void;
   onOpenDecomposer: () => void;
   onOpenRules?: () => void;
-  onSelectPreset: (preset: 'student' | 'freelancer' | 'professional') => void;
   onResetData: () => void;
   activeFocusTaskTitle?: string;
   focusTimerSeconds?: number;
@@ -25,7 +24,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCoach,
   onOpenDecomposer,
   onOpenRules,
-  onSelectPreset,
   onResetData,
   activeFocusTaskTitle,
   focusTimerSeconds = 0,
@@ -38,7 +36,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [presetOpen, setPresetOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -131,42 +128,6 @@ export const Header: React.FC<HeaderProps> = ({
                     <div className="px-3 py-2 border-b border-stone-100">
                       <p className="font-bold text-stone-900 truncate">{userName || 'Active User'}</p>
                       <p className="text-[11px] text-stone-500 truncate">{userEmail || 'Signed In'}</p>
-                    </div>
-
-                    <div className="py-1">
-                      <p className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
-                        Switch Workspace Preset
-                      </p>
-                      <button
-                        onClick={() => {
-                          onSelectPreset('student');
-                          setUserMenuOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-stone-50 text-stone-700 flex items-center gap-2"
-                      >
-                        <span className="w-2 h-2 rounded-full bg-blue-500" />
-                        <span>University Student</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          onSelectPreset('professional');
-                          setUserMenuOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-stone-50 text-stone-700 flex items-center gap-2"
-                      >
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span>Corporate Professional</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          onSelectPreset('freelancer');
-                          setUserMenuOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-stone-50 text-stone-700 flex items-center gap-2"
-                      >
-                        <span className="w-2 h-2 rounded-full bg-purple-500" />
-                        <span>Freelancer / Founder</span>
-                      </button>
                     </div>
 
                     <div className="border-t border-stone-100 py-1">

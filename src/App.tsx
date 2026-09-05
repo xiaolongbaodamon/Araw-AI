@@ -5,11 +5,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  INITIAL_TASKS,
-  INITIAL_HABITS,
   INITIAL_HEALTH,
-  INITIAL_FINANCE,
-  INITIAL_INSIGHTS,
   INITIAL_NEXT_ACTION,
 } from './utils/initialData';
 import {
@@ -818,97 +814,6 @@ export default function App() {
     setFocusTimerSeconds(25 * 60);
   };
 
-  // Preset Switcher (allowed for exploration)
-  const handleSelectPreset = (preset: 'student' | 'freelancer' | 'professional') => {
-    if (preset === 'student') {
-      setTasks([
-        {
-          id: 't-s1',
-          title: 'Calculus III Problem Set 4 (Multivariate)',
-          category: 'school',
-          tag: 'Math 302',
-          priority: 'urgent',
-          dueDate: '2026-09-05',
-          estimatedMinutes: 60,
-          completed: false,
-          subtasks: [
-            { id: 'st-1', title: 'Solve questions 1-5', completed: true },
-            { id: 'st-2', title: 'Type solutions in LaTeX', completed: false },
-          ],
-        },
-        {
-          id: 't-s2',
-          title: 'Organic Chemistry Lab Synthesis Report',
-          category: 'school',
-          tag: 'Chem 220',
-          priority: 'high',
-          dueDate: '2026-09-06',
-          estimatedMinutes: 45,
-          completed: false,
-        },
-      ]);
-      setFinances((prev) => ({
-        ...prev,
-        currency: '₱',
-        dailyBudget: 450,
-        monthlySavingsTarget: 4000,
-        currentSavings: 2800,
-      }));
-      setHealth((prev) => ({
-        ...prev,
-        screenTimeMinutes: 160,
-        continuousWorkMinutes: 80,
-        waterGlasses: 4,
-        sleepHours: 6.5,
-      }));
-      showToast('Loaded University Student Preset.');
-    } else if (preset === 'freelancer') {
-      setTasks([
-        {
-          id: 't-f1',
-          title: 'Deliver Cloud Run Microservice API Specs',
-          category: 'work',
-          tag: 'Client Alpha',
-          priority: 'urgent',
-          dueDate: '2026-09-05',
-          estimatedMinutes: 50,
-          completed: false,
-        },
-        {
-          id: 't-f2',
-          title: 'Send Invoice #1084 & Contract Milestone',
-          category: 'work',
-          tag: 'Client Beta',
-          priority: 'high',
-          dueDate: '2026-09-05',
-          estimatedMinutes: 15,
-          completed: true,
-        },
-      ]);
-      setFinances((prev) => ({
-        ...prev,
-        currency: '$',
-        dailyBudget: 45,
-        monthlySavingsTarget: 1500,
-        currentSavings: 1100,
-      }));
-      setHealth((prev) => ({
-        ...prev,
-        screenTimeMinutes: 220,
-        continuousWorkMinutes: 95,
-        waterGlasses: 6,
-        sleepHours: 7.5,
-      }));
-      showToast('Loaded Freelance Developer Preset.');
-    } else {
-      setTasks(INITIAL_TASKS);
-      setFinances(INITIAL_FINANCE);
-      setHealth(INITIAL_HEALTH);
-      setHabits(INITIAL_HABITS);
-      showToast('Loaded Working Professional Preset.');
-    }
-  };
-
   const handleResetData = () => {
     setTasks([]);
     setHabits([]);
@@ -940,7 +845,6 @@ export default function App() {
         balanceIndex={balanceIndex}
         onOpenCoach={() => setIsCoachOpen(true)}
         onOpenDecomposer={() => setIsDecomposerOpen(true)}
-        onSelectPreset={handleSelectPreset}
         onResetData={handleResetData}
         activeFocusTaskTitle={activeFocusTaskTitle}
         focusTimerSeconds={focusTimerSeconds}
@@ -961,7 +865,6 @@ export default function App() {
             onSuccess={() => {
               showToast('Authentication successful. Welcome to Araw AI!');
             }}
-            onSelectPreset={handleSelectPreset}
           />
         ) : !userProfile?.onboardingCompleted ? (
           /* State 2: Authenticated but Parameters Needed -> Clean Setup Prompt */
