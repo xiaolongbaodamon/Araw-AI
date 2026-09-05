@@ -8,12 +8,11 @@ import {
   ArrowUpRight,
   TrendingUp,
 } from 'lucide-react';
-import { LifeBalanceIndex, TaskItem, HabitItem, HealthState, FinancialState } from '../types';
+import { LifeBalanceIndex, TaskItem, HealthState, FinancialState } from '../types';
 
 interface LifeBalanceOverviewProps {
   balanceIndex: LifeBalanceIndex;
   tasks: TaskItem[];
-  habits: HabitItem[];
   health: HealthState;
   finances: FinancialState;
   onNavigateTab: (tab: string) => void;
@@ -22,13 +21,11 @@ interface LifeBalanceOverviewProps {
 export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
   balanceIndex,
   tasks,
-  habits,
   health,
   finances,
   onNavigateTab,
 }) => {
   const completedTasks = tasks.filter((t) => t.completed).length;
-  const completedHabits = habits.filter((h) => h.completedToday).length;
 
   const todayExpenses = finances.transactions
     .filter((tr) => tr.type === 'expense')
@@ -81,7 +78,7 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
       </div>
 
       {/* 4 Pillars Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {/* Pillar 1: Work & School */}
         <div
           onClick={() => onNavigateTab('work_school')}
@@ -176,35 +173,6 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
           </div>
         </div>
 
-        {/* Pillar 4: Habit Consistency */}
-        <div
-          onClick={() => onNavigateTab('habits')}
-          className="group cursor-pointer rounded-xl bg-white border border-stone-200 hover:border-stone-400 p-4 transition-all shadow-2xs hover:shadow-xs"
-        >
-          <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
-                <CheckCheck className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                Habit Streaks
-              </span>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-stone-400 group-hover:text-stone-800 transition-colors" />
-          </div>
-          <div className="pt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-stone-900">
-              {completedHabits}/{habits.length}
-            </span>
-            <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" />
-              {balanceIndex.habitConsistencyScore}% Done
-            </span>
-          </div>
-          <p className="text-[11px] text-stone-600 mt-1">
-            Top streak: {Math.max(...habits.map((h) => h.streak), 0)} days on morning walk
-          </p>
-        </div>
       </div>
     </div>
   );

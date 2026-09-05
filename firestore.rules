@@ -62,19 +62,6 @@ service cloud.firestore {
         && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
     }
 
-    function isValidHabit(data, userId) {
-      return data.keys().hasAll(['userId', 'title', 'category', 'timeOfDay', 'completedToday'])
-        && data.userId == userId && data.userId == request.auth.uid
-        && data.title is string && data.title.size() > 0 && data.title.size() <= 150
-        && data.category in ['health', 'work', 'school', 'finance', 'mindfulness']
-        && data.timeOfDay in ['morning', 'afternoon', 'evening', 'anytime']
-        && data.completedToday is bool
-        && (!('durationMinutes' in data) || (data.durationMinutes is number && data.durationMinutes >= 0 && data.durationMinutes <= 1440))
-        && (!('streak' in data) || (data.streak is number && data.streak >= 0))
-        && (!('bestStreak' in data) || (data.bestStreak is number && data.bestStreak >= 0))
-        && (!('targetPerWeek' in data) || (data.targetPerWeek is number && data.targetPerWeek >= 1 && data.targetPerWeek <= 7));
-    }
-
     function isValidHealth(data, userId) {
       return data.keys().hasAll(['userId', 'date'])
         && data.userId == userId && data.userId == request.auth.uid
@@ -113,14 +100,6 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidId(taskId) && isValidTask(incoming(), userId);
         allow update: if isOwner(userId) && isValidId(taskId) && isValidTask(incoming(), userId) && incoming().userId == existing().userId;
         allow delete: if isOwner(userId) && isValidId(taskId);
-      }
-
-      // Habits Subcollection
-      match /habits/{habitId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(habitId) && isValidHabit(incoming(), userId);
-        allow update: if isOwner(userId) && isValidId(habitId) && isValidHabit(incoming(), userId) && incoming().userId == existing().userId;
-        allow delete: if isOwner(userId) && isValidId(habitId);
       }
 
       // Health Log Subcollection

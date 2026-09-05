@@ -14,6 +14,7 @@ interface AiCoachDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   userContext: any;
+  onContextChange: (message: string) => Promise<void>;
 }
 
 interface ChatMessage {
@@ -27,12 +28,13 @@ export const AiCoachDrawer: React.FC<AiCoachDrawerProps> = ({
   isOpen,
   onClose,
   userContext,
+  onContextChange,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'm-1',
       sender: 'coach',
-      text: "Mabuhay! I am your Araw 24/7 Life OS Coach. I don't just push you to grind—I protect your attention, organize your work & school deadlines, guide your financial habits, and tell you when it's time to log off. How can I optimize your day right now?",
+      text: "Mabuhay! I am your Araw 24/7 Life OS Coach. I don't just push you to grind—I protect your attention, organize your work and school deadlines, guide your financial goals, and tell you when it's time to log off. How can I optimize your day right now?",
       timestamp: 'Just now',
     },
   ]);
@@ -73,6 +75,10 @@ export const AiCoachDrawer: React.FC<AiCoachDrawerProps> = ({
         }),
       });
 
+      if (!res.ok) {
+        throw new Error(`Assistant request failed with status ${res.status}`);
+      }
+
       const data = await res.json();
       const coachMsg: ChatMessage = {
         id: `coach-${Date.now()}`,
@@ -81,6 +87,9 @@ export const AiCoachDrawer: React.FC<AiCoachDrawerProps> = ({
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, coachMsg]);
+      await onContextChange(query).catch((contextError) => {
+        console.error('Failed to refresh assistant context:', contextError);
+      });
     } catch (err) {
       console.error(err);
       const fallbackMsg: ChatMessage = {
@@ -110,7 +119,7 @@ export const AiCoachDrawer: React.FC<AiCoachDrawerProps> = ({
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
               </div>
               <p className="text-[11px] text-stone-300">
-                Ask about your schedule, goals, and habits
+                Ask about your schedule, goals, deadlines, and budget
               </p>
             </div>
           </div>

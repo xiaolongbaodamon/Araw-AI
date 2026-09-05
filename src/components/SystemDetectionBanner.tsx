@@ -47,8 +47,6 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
   const urgentDeadlines = detections.workSchool.imminentDeadlines.filter((d) => d.isUrgent);
   const sleepDeficit = detections.healthSleep.isDeficit;
   const isOverBudget = detections.financials.isOverDailyBudget;
-  const pendingHabits = detections.habits.pendingHabitsCount;
-
   const filteredRecs = recommendations.filter((rec) => {
     if (selectedPillarFilter === 'all') return true;
     return rec.pillar === selectedPillarFilter;
@@ -63,7 +61,7 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
             Daily Status & Suggestions
           </h2>
           <p className="text-xs text-stone-400">
-            Overview across deadlines, sleep, spending, and habits.
+            Overview across deadlines, sleep, and spending based on your profile.
           </p>
         </div>
 
@@ -182,34 +180,6 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
           </div>
         </div>
 
-        {/* Card 4: Habits & Duration */}
-        <div className="rounded-xl bg-stone-800/80 border border-stone-700/70 p-3.5 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Flame className="w-4 h-4 text-amber-400" />
-              <span>Habit Architecture</span>
-            </span>
-            <span className="text-[10px] font-medium text-stone-300 bg-stone-700 px-1.5 py-0.5 rounded">
-              {detections.habits.completedTodayCount}/{detections.habits.totalHabits} Done
-            </span>
-          </div>
-          <div className="text-xl font-bold text-white">
-            {detections.habits.pendingDurationMinutes}m pending
-          </div>
-          <div className="text-[11px] text-stone-300 space-y-0.5">
-            <div>
-              • Total planned today: {detections.habits.totalPlannedDurationMinutes} mins
-            </div>
-            <div>
-              • {detections.habits.pendingHabitsCount} habits awaiting completion
-            </div>
-            {detections.habits.pendingHabits[0] && (
-              <div className="text-amber-300 font-medium truncate pt-1">
-                ⏱️ Next: {detections.habits.pendingHabits[0].title} ({detections.habits.pendingHabits[0].durationMinutes}m)
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Generated Actionable AI Recommendations */}

@@ -1,6 +1,6 @@
 {
   "name": "Araw AI - Daily Life OS",
-  "description": "Personal daily management platform unifying tasks, habits, health, and finances.",
+  "description": "Personal daily management platform unifying work, school, health, and finances.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

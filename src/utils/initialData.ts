@@ -1,4 +1,4 @@
-import { TaskItem, HabitItem, HealthState, FinancialState, AiInsight, NextBestAction } from '../types';
+import { TaskItem, HealthState, FinancialState, AiInsight, NextBestAction } from '../types';
 
 export const INITIAL_TASKS: TaskItem[] = [
   {
@@ -52,87 +52,6 @@ export const INITIAL_TASKS: TaskItem[] = [
     dueDate: '2026-09-07',
     estimatedMinutes: 25,
     completed: false,
-  },
-];
-
-export const INITIAL_HABITS: HabitItem[] = [
-  {
-    id: 'h-1',
-    title: 'Morning Sun & 15m Outdoor Walk',
-    category: 'health',
-    timeOfDay: 'morning',
-    streak: 12,
-    bestStreak: 21,
-    completedToday: true,
-    targetPerWeek: 7,
-    history: {
-      '2026-09-01': true,
-      '2026-09-02': true,
-      '2026-09-03': true,
-      '2026-09-04': true,
-      '2026-09-05': true,
-    },
-  },
-  {
-    id: 'h-2',
-    title: 'Deep Work: 90m uninterrupted focus',
-    category: 'work',
-    timeOfDay: 'morning',
-    streak: 5,
-    bestStreak: 14,
-    completedToday: false,
-    targetPerWeek: 5,
-    history: {
-      '2026-09-01': true,
-      '2026-09-02': true,
-      '2026-09-03': true,
-      '2026-09-04': true,
-    },
-  },
-  {
-    id: 'h-3',
-    title: 'Read 20 pages (Textbook or Non-fiction)',
-    category: 'school',
-    timeOfDay: 'afternoon',
-    streak: 8,
-    bestStreak: 18,
-    completedToday: false,
-    targetPerWeek: 7,
-    history: {
-      '2026-09-02': true,
-      '2026-09-03': true,
-      '2026-09-04': true,
-    },
-  },
-  {
-    id: 'h-4',
-    title: 'Log daily expenses & review budget',
-    category: 'finance',
-    timeOfDay: 'evening',
-    streak: 19,
-    bestStreak: 30,
-    completedToday: false,
-    targetPerWeek: 7,
-    history: {
-      '2026-09-01': true,
-      '2026-09-02': true,
-      '2026-09-03': true,
-      '2026-09-04': true,
-    },
-  },
-  {
-    id: 'h-5',
-    title: 'Zero Screen Time 45 mins before sleep',
-    category: 'mindfulness',
-    timeOfDay: 'evening',
-    streak: 4,
-    bestStreak: 9,
-    completedToday: false,
-    targetPerWeek: 6,
-    history: {
-      '2026-09-03': true,
-      '2026-09-04': true,
-    },
   },
 ];
 
@@ -226,10 +145,10 @@ export const INITIAL_INSIGHTS: AiInsight[] = [
 ];
 
 export const INITIAL_NEXT_ACTION: NextBestAction = {
-  title: 'Calculus III Problem Set 4 (Multivariate)',
-  category: 'school',
+  title: 'Choose your first priority',
+  category: 'work',
   actionType: 'deep_work',
-  estimatedMinutes: 45,
-  reason: 'Urgent deadline today at 18:00. Your cognitive energy is high (4/5) and matching your morning focus window.',
+  estimatedMinutes: 25,
+  reason: 'Your workspace is clear. Add a task or schoolwork item to receive a personalized focus recommendation.',
   urgency: 'optimal',
 };

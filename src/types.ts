@@ -2,10 +2,17 @@ export type PillarCategory = 'work' | 'school' | 'health' | 'finance' | 'mindful
 
 export type TaskType = 'work_task' | 'schoolwork' | 'assignment' | 'project' | 'exam_prep' | 'deliverable' | 'other';
 
+export interface SchoolSubject {
+  id: string;
+  name: string;
+  weeklyMinutes: number;
+}
+
 export interface TaskItem {
   id: string;
   title: string;
   category: 'work' | 'school';
+  subject?: string;
   taskType?: TaskType;
   tag: string; // e.g., "CS 101", "Client Sprint", "Midterm Essay"
   priority: 'low' | 'medium' | 'high' | 'urgent';
@@ -16,19 +23,6 @@ export interface TaskItem {
   completedAt?: string;
   subtasks?: { id: string; title: string; completed: boolean }[];
   isFocusSessionActive?: boolean;
-}
-
-export interface HabitItem {
-  id: string;
-  title: string;
-  category: PillarCategory;
-  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'anytime';
-  durationMinutes?: number; // How long user does their habit (e.g. 15, 30, 45, 60 mins)
-  streak: number;
-  bestStreak: number;
-  completedToday: boolean;
-  targetPerWeek: number;
-  history: Record<string, boolean>; // e.g. '2026-09-05': true
 }
 
 export interface HealthState {
@@ -81,6 +75,7 @@ export interface SystemDetectionRecommendation {
         hoursUntilDue: number;
         isUrgent: boolean;
         category: 'work' | 'school';
+        subject?: string;
         taskType?: string;
       }[];
     };
@@ -105,14 +100,6 @@ export interface SystemDetectionRecommendation {
       monthlyRemaining: number;
       isOverDailyBudget: boolean;
       isOverWeeklyBudget: boolean;
-    };
-    habits: {
-      totalHabits: number;
-      completedTodayCount: number;
-      pendingHabitsCount: number;
-      totalPlannedDurationMinutes: number;
-      pendingDurationMinutes: number;
-      pendingHabits: { title: string; durationMinutes?: number; category: PillarCategory }[];
     };
   };
   recommendations: {
@@ -142,7 +129,7 @@ export interface AiInsight {
 export interface NextBestAction {
   title: string;
   category: PillarCategory | 'rest';
-  actionType: 'deep_work' | 'study_review' | 'wellness_break' | 'habit_trigger' | 'financial_check';
+  actionType: 'deep_work' | 'study_review' | 'wellness_break' | 'financial_check';
   estimatedMinutes: number;
   reason: string;
   urgency: 'urgent' | 'optimal' | 'rejuvenating';
@@ -153,7 +140,6 @@ export interface LifeBalanceIndex {
   workSchoolScore: number;
   healthWellnessScore: number;
   financialDisciplineScore: number;
-  habitConsistencyScore: number;
   summary: string;
   protectiveAdvice: string;
 }
@@ -171,6 +157,7 @@ export interface UserProfile {
   wakeTime: string;
   bedTime: string;
   primaryGoal: string;
+  subjects: SchoolSubject[];
   onboardingCompleted: boolean;
   createdAt: string;
 }

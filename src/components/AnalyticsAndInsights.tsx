@@ -12,13 +12,12 @@ import {
   ArrowRight,
   Filter,
 } from 'lucide-react';
-import { AiInsight, LifeBalanceIndex, TaskItem, HabitItem, HealthState, FinancialState } from '../types';
+import { AiInsight, LifeBalanceIndex, TaskItem, HealthState, FinancialState } from '../types';
 
 interface AnalyticsAndInsightsProps {
   insights: AiInsight[];
   balanceIndex: LifeBalanceIndex;
   tasks: TaskItem[];
-  habits: HabitItem[];
   health: HealthState;
   finances: FinancialState;
   onRefreshAiInsights: () => Promise<void>;
@@ -29,7 +28,6 @@ export const AnalyticsAndInsights: React.FC<AnalyticsAndInsightsProps> = ({
   insights,
   balanceIndex,
   tasks,
-  habits,
   health,
   finances,
   onRefreshAiInsights,
@@ -95,10 +93,6 @@ export const AnalyticsAndInsights: React.FC<AnalyticsAndInsightsProps> = ({
   const completedTasks = tasks.filter((t) => t.completed).length;
   const taskPercent = Math.round((completedTasks / totalTasks) * 100);
 
-  const totalHabits = habits.length || 1;
-  const completedHabits = habits.filter((h) => h.completedToday).length;
-  const habitPercent = Math.round((completedHabits / totalHabits) * 100);
-
   return (
     <div className="space-y-6">
       {/* Header Banner */}
@@ -109,7 +103,7 @@ export const AnalyticsAndInsights: React.FC<AnalyticsAndInsightsProps> = ({
               Analytics & Summary
             </h2>
             <p className="text-xs text-stone-500 max-w-xl">
-              Performance metrics across your tasks, habits, health, and finances.
+              Performance metrics across your tasks, health, and finances.
             </p>
           </div>
 
@@ -125,7 +119,7 @@ export const AnalyticsAndInsights: React.FC<AnalyticsAndInsightsProps> = ({
       </div>
 
       {/* Analytics Visual Gauges */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Pillar 1 Bar */}
         <div className="rounded-xl bg-white border border-stone-200 p-4 shadow-2xs space-y-2">
           <div className="flex items-center justify-between text-xs">
@@ -180,23 +174,6 @@ export const AnalyticsAndInsights: React.FC<AnalyticsAndInsightsProps> = ({
           </div>
         </div>
 
-        {/* Pillar 4 Bar */}
-        <div className="rounded-xl bg-white border border-stone-200 p-4 shadow-2xs space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-stone-700">Habit Anchor Rate</span>
-            <span className="font-semibold text-purple-600">{habitPercent}%</span>
-          </div>
-          <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-            <div
-              className="bg-purple-600 h-full rounded-full transition-all"
-              style={{ width: `${habitPercent}%` }}
-            ></div>
-          </div>
-          <div className="text-[11px] text-stone-500 flex justify-between">
-            <span>{completedHabits} of {habits.length} anchored</span>
-            <span>Max streak: {Math.max(...habits.map((h) => h.streak), 0)}d</span>
-          </div>
-        </div>
       </div>
 
       {/* Recorded Insights Feed */}

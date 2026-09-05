@@ -19,7 +19,7 @@ import {
   BookOpen,
   Filter,
 } from 'lucide-react';
-import { TaskItem, TaskType } from '../types';
+import { SchoolSubject, TaskItem, TaskType } from '../types';
 
 interface WorkSchoolHubProps {
   tasks: TaskItem[];
@@ -35,6 +35,7 @@ interface WorkSchoolHubProps {
   onStartFocus: (taskTitle: string, minutes: number) => void;
   onPauseFocus: () => void;
   onResetFocus: () => void;
+  subjects: SchoolSubject[];
 }
 
 export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
@@ -50,6 +51,7 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
   onStartFocus,
   onPauseFocus,
   onResetFocus,
+  subjects,
 }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'school' | 'work' | 'deadlines'>('all');
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
@@ -61,6 +63,7 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
   const [newCategory, setNewCategory] = useState<'work' | 'school'>('school');
   const [newTaskType, setNewTaskType] = useState<TaskType>('assignment');
   const [newTag, setNewTag] = useState('');
+  const [newSubject, setNewSubject] = useState('');
   const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('high');
   const [newDueDate, setNewDueDate] = useState('2026-09-05');
   const [newDueTime, setNewDueTime] = useState('23:59');
@@ -87,6 +90,7 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
     onAddTask({
       title: newTitle.trim(),
       category: newCategory,
+      subject: newCategory === 'school' ? newSubject : undefined,
       taskType: newTaskType,
       tag: newTag.trim() || (newCategory === 'work' ? 'Work Project' : 'Course Work'),
       priority: newPriority,
@@ -99,6 +103,7 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
 
     setNewTitle('');
     setNewTag('');
+    setNewSubject('');
     setShowAddModal(false);
   };
 
@@ -395,7 +400,7 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                         {/* Tag/Course */}
                         <span className="text-[11px] text-stone-600 flex items-center gap-1 font-medium bg-stone-100 px-2 py-0.5 rounded">
                           <Tag className="w-3 h-3 text-stone-400" />
-                          {task.tag}
+                          {task.subject || task.tag}
                         </span>
 
                         {/* Priority */}
@@ -436,6 +441,7 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
 
                       <div className="flex items-center gap-3 text-xs text-stone-500">
                         <span>Est: {task.estimatedMinutes}m</span>
+                        {task.subject && <span>• {task.subject}</span>}
                         {task.dueTime && <span>• Deadline Time: {task.dueTime}</span>}
                       </div>
                     </div>
@@ -619,15 +625,29 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
 
                 <div>
                   <label className="block font-semibold text-stone-700 mb-1">
-                    {newCategory === 'school' ? 'Course / Subject Tag' : 'Client / Project Tag'}
+                    {newCategory === 'school' ? 'Subject' : 'Client / Project Tag'}
                   </label>
-                  <input
-                    type="text"
-                    placeholder={newCategory === 'school' ? 'e.g. MATH 201, BIO 102' : 'e.g. Client Acme, Product Sprint'}
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  {newCategory === 'school' ? (
+                    <select
+                      required
+                      value={newSubject}
+                      onChange={(e) => setNewSubject(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    >
+                      <option value="">Choose a subject</option>
+                      {subjects.map((subject) => (
+                        <option key={subject.id} value={subject.name}>{subject.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="e.g. Client Acme, Product Sprint"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  )}
                 </div>
               </div>
 

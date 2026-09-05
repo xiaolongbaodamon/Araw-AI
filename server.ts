@@ -33,7 +33,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 // 2. Next Best Action endpoint
 app.post('/api/ai/next-action', async (req: Request, res: Response) => {
   try {
-    const { tasks, habits, health, timeOfDay } = req.body;
+    const { tasks, health, timeOfDay, subjects } = req.body;
 
     if (ai) {
       const prompt = `You are Araw AI, an intelligent 24/7 Life OS coach designed to optimize time, productivity, and protect against burnout.
@@ -43,16 +43,16 @@ Given this user state:
 - Continuous focus time without a break: ${health?.continuousWorkMinutes || 0} minutes
 - Energy Level (1-5): ${health?.energyLevel || 3}
 - Pending Tasks: ${JSON.stringify(tasks?.filter((t: any) => !t.completed)?.slice(0, 6) || [])}
-- Incomplete Habits: ${JSON.stringify(habits?.filter((h: any) => !h.completedToday)?.slice(0, 5) || [])}
+- User Subjects and weekly study minutes: ${JSON.stringify(subjects || [])}
 
 Rule 1: If continuous work is >= 75 minutes or screen time is high and energy is low (<=2), the user's next action MUST be a wellness break or hydration/walk. As Araw AI says: "Our AI doesn't just push you to do more. It learns you and protects you."
-Rule 2: Otherwise, pick the single highest leverage task or habit for this exact moment.
+Rule 2: Otherwise, pick the single highest leverage pending task. For schoolwork, prioritize the nearest deadline first, then use the subject's weekly study minutes to break ties.
 
 Return JSON adhering to schema:
 {
   "title": "string (clear action verb)",
   "category": "work" | "school" | "health" | "finance" | "rest",
-  "actionType": "deep_work" | "study_review" | "wellness_break" | "habit_trigger" | "financial_check",
+  "actionType": "deep_work" | "study_review" | "wellness_break" | "financial_check",
   "estimatedMinutes": number,
   "reason": "string (1-2 sentences explaining why now)",
   "urgency": "urgent" | "optimal" | "rejuvenating"
@@ -98,7 +98,11 @@ Return JSON adhering to schema:
     }
 
     const uncompletedTasks = (tasks || []).filter((t: any) => !t.completed);
-    const urgentTask = uncompletedTasks.find((t: any) => t.priority === 'urgent') || uncompletedTasks[0];
+    const urgentTask = [...uncompletedTasks].sort((a: any, b: any) => {
+      if (a.priority === 'urgent' && b.priority !== 'urgent') return -1;
+      if (b.priority === 'urgent' && a.priority !== 'urgent') return 1;
+      return `${a.dueDate || '9999-12-31'}T${a.dueTime || '23:59'}`.localeCompare(`${b.dueDate || '9999-12-31'}T${b.dueTime || '23:59'}`);
+    })[0];
 
     if (urgentTask) {
       return res.json({
@@ -112,11 +116,11 @@ Return JSON adhering to schema:
     }
 
     return res.json({
-      title: 'Review Habits & Log Expenses',
-      category: 'health',
-      actionType: 'habit_trigger',
+      title: 'Review Your Weekly Priorities',
+      category: 'school',
+      actionType: 'study_review',
       estimatedMinutes: 10,
-      reason: 'All critical milestones for this block are clear. Use this buffer to check habits and recharge.',
+      reason: 'There are no pending deadlines yet. Use this buffer to review your subjects and plan the next study block.',
       urgency: 'optimal',
     });
   } catch (error) {
@@ -128,15 +132,15 @@ Return JSON adhering to schema:
 // 3. Life Insights & Balance Index
 app.post('/api/ai/insights', async (req: Request, res: Response) => {
   try {
-    const { tasks, habits, health, finances } = req.body;
+    const { tasks, health, finances, userProfile } = req.body;
 
     if (ai) {
-      const prompt = `You are Araw AI, analyzing a user's multi-pillar life data (Work, School, Health, Financials, Habits).
+      const prompt = `You are Araw AI, analyzing a user's work, school, health, and financial data.
 State:
 - Tasks: ${tasks?.length || 0} total, ${tasks?.filter((t: any) => t.completed)?.length || 0} completed
-- Habits: ${habits?.length || 0} total, ${habits?.filter((h: any) => h.completedToday)?.length || 0} completed today
 - Health: Screen time ${health?.screenTimeMinutes || 0}m, Continuous work ${health?.continuousWorkMinutes || 0}m, Sleep ${health?.sleepHours || 0}h, Water ${health?.waterGlasses || 0} glasses
 - Financials: Daily budget ${finances?.dailyBudget || 0}, Current expenses today ${finances?.transactions?.filter((tr: any) => tr.type === 'expense')?.reduce((acc: number, c: any) => acc + c.amount, 0) || 0}
+- User profile: ${JSON.stringify(userProfile || {})}
 
 Generate:
 1. 3 highly personalized, actionable insights. Each must have:
@@ -151,7 +155,6 @@ Generate:
    - workSchoolScore (0-100)
    - healthWellnessScore (0-100)
    - financialDisciplineScore (0-100)
-   - habitConsistencyScore (0-100)
    - summary (1 sentence overview)
    - protectiveAdvice (1 sentence guardian tip)`;
 
@@ -185,7 +188,6 @@ Generate:
                   workSchoolScore: { type: Type.NUMBER },
                   healthWellnessScore: { type: Type.NUMBER },
                   financialDisciplineScore: { type: Type.NUMBER },
-                  habitConsistencyScore: { type: Type.NUMBER },
                   summary: { type: Type.STRING },
                   protectiveAdvice: { type: Type.STRING },
                 },
@@ -194,7 +196,6 @@ Generate:
                   'workSchoolScore',
                   'healthWellnessScore',
                   'financialDisciplineScore',
-                  'habitConsistencyScore',
                   'summary',
                   'protectiveAdvice',
                 ],
@@ -219,17 +220,13 @@ Generate:
 
     // Heuristic fallback
     const compTasks = (tasks || []).filter((t: any) => t.completed).length;
-    const totalTasks = (tasks || []).length || 1;
-    const taskScore = Math.round((compTasks / totalTasks) * 100);
+    const totalTasks = (tasks || []).length;
+    const taskScore = totalTasks === 0 ? 50 : Math.round((compTasks / totalTasks) * 100);
 
-    const compHabits = (habits || []).filter((h: any) => h.completedToday).length;
-    const totalHabits = (habits || []).length || 1;
-    const habitScore = Math.round((compHabits / totalHabits) * 100);
-
-    const screenTime = health?.screenTimeMinutes || 120;
-    const healthScore = Math.max(30, Math.min(95, Math.round(100 - (screenTime / 300) * 40 + (health?.waterGlasses || 4) * 5)));
-    const financeScore = 84;
-    const overall = Math.round((taskScore * 0.3) + (habitScore * 0.25) + (healthScore * 0.25) + (financeScore * 0.2));
+    const screenTime = health?.screenTimeMinutes || 0;
+    const healthScore = Math.max(25, Math.min(100, Math.round(50 - (screenTime / 300) * 25 + (health?.waterGlasses || 0) * 2)));
+    const financeScore = 50;
+    const overall = Math.round((taskScore * 0.4) + (healthScore * 0.35) + (financeScore * 0.25));
 
     return res.json({
       insights: [
@@ -239,7 +236,7 @@ Generate:
           pillar: 'health',
           type: 'burnout_shield',
           title: screenTime > 120 ? 'Screen Exposure Over Threshold' : 'Good Optical Rhythm',
-          rationale: `Logged ${screenTime}m of screen usage today. Continuous exposure increases blue-light strain and reduces evening melatonin.`,
+          rationale: `Logged ${screenTime}m of screen usage today. Araw adjusts this guidance as your activity changes.`,
           actionableStep: 'Schedule a 10-minute walk outside or look 20 feet away for 20 seconds.',
           urgency: screenTime > 150 ? 'high' : 'medium',
         },
@@ -269,7 +266,6 @@ Generate:
         workSchoolScore: taskScore,
         healthWellnessScore: healthScore,
         financialDisciplineScore: financeScore,
-        habitConsistencyScore: habitScore,
         summary: overall >= 80 ? 'Harmonious pace across work, health, and finances.' : 'Good progress, but wellness needs active replenishment.',
         protectiveAdvice: health?.continuousWorkMinutes > 60 ? 'Close the screen for 5 minutes. True discipline includes scheduled recovery.' : 'Maintain your hydration and focus rhythm.',
       },

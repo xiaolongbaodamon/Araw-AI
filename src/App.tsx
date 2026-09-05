@@ -10,7 +10,6 @@ import {
 } from './utils/initialData';
 import {
   TaskItem,
-  HabitItem,
   HealthState,
   FinancialState,
   FinancialItem,
@@ -18,6 +17,7 @@ import {
   NextBestAction,
   LifeBalanceIndex,
   UserProfile,
+  SchoolSubject,
 } from './types';
 import { Header } from './components/Header';
 import { NextBestActionCard } from './components/NextBestActionCard';
@@ -25,7 +25,6 @@ import { LifeBalanceOverview } from './components/LifeBalanceOverview';
 import { WorkSchoolHub } from './components/WorkSchoolHub';
 import { HealthGuardian } from './components/HealthGuardian';
 import { FinancialTracker } from './components/FinancialTracker';
-import { HabitTracker } from './components/HabitTracker';
 import { AnalyticsAndInsights } from './components/AnalyticsAndInsights';
 import { SystemDetectionBanner } from './components/SystemDetectionBanner';
 import { calculateSystemDetectionsAndRecommendations } from './services/recommendationEngine';
@@ -50,10 +49,12 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocs,
   collection,
   onSnapshot,
   deleteDoc,
   updateDoc,
+  waitForPendingWrites,
 } from 'firebase/firestore';
 import {
   LayoutDashboard,
@@ -82,8 +83,18 @@ export default function App() {
 
   // Application Data States
   const [tasks, setTasks] = useState<TaskItem[]>([]);
-  const [habits, setHabits] = useState<HabitItem[]>([]);
-  const [health, setHealth] = useState<HealthState>(INITIAL_HEALTH);
+  const [health, setHealth] = useState<HealthState>({
+    screenTimeMinutes: 0,
+    continuousWorkMinutes: 0,
+    sleepHours: 0,
+    waterGlasses: 0,
+    targetWaterGlasses: 8,
+    energyLevel: 3,
+    lastBreakTime: Date.now(),
+    breaksTakenToday: 0,
+    activeTimerRunning: false,
+    activeTimerSeconds: 0,
+  });
   const [finances, setFinances] = useState<FinancialState>({
     currency: '₱',
     dailyBudget: 500,
@@ -96,7 +107,7 @@ export default function App() {
 
   // UI Navigation & Modals
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'work_school' | 'health' | 'finance' | 'habits' | 'analytics'
+    'overview' | 'work_school' | 'health' | 'finance' | 'analytics'
   >('overview');
   const [isCoachOpen, setIsCoachOpen] = useState(false);
   const [isDecomposerOpen, setIsDecomposerOpen] = useState(false);
@@ -133,12 +144,17 @@ export default function App() {
           if (snap.exists()) {
             const data = snap.data() as UserProfile;
             setUserProfile(data);
+            setInsights((data as UserProfile & { latestInsights?: AiInsight[] }).latestInsights || []);
+            const savedNextAction = (data as UserProfile & { latestNextAction?: NextBestAction }).latestNextAction;
+            if (savedNextAction) setNextAction(savedNextAction);
             if (data.currency || data.dailyBudget) {
               setFinances((f) => ({
                 ...f,
                 currency: data.currency || '₱',
                 dailyBudget: data.dailyBudget || 500,
                 monthlySavingsTarget: data.monthlySavingsTarget || 5000,
+                weeklyBudget: data.weeklyBudget || (data.dailyBudget || 500) * 7,
+                monthlyBudget: data.monthlyBudget || (data.dailyBudget || 500) * 30,
               }));
             }
           } else {
@@ -151,7 +167,7 @@ export default function App() {
       } else {
         setUserProfile(null);
         setTasks([]);
-        setHabits([]);
+        setInsights([]);
         setFinances({
           currency: '₱',
           dailyBudget: 500,
@@ -185,21 +201,7 @@ export default function App() {
       (err) => handleFirestoreError(err, OperationType.LIST, `users/${uid}/tasks`)
     );
 
-    // 2. Habits listener
-    const habitsColRef = collection(db, 'users', uid, 'habits');
-    const unsubHabits = onSnapshot(
-      habitsColRef,
-      (snapshot) => {
-        const loadedHabits: HabitItem[] = [];
-        snapshot.forEach((d) => {
-          loadedHabits.push({ id: d.id, ...d.data() } as HabitItem);
-        });
-        setHabits(loadedHabits);
-      },
-      (err) => handleFirestoreError(err, OperationType.LIST, `users/${uid}/habits`)
-    );
-
-    // 3. Transactions listener
+    // 2. Transactions listener
     const transColRef = collection(db, 'users', uid, 'transactions');
     const unsubTrans = onSnapshot(
       transColRef,
@@ -220,7 +222,7 @@ export default function App() {
       (err) => handleFirestoreError(err, OperationType.LIST, `users/${uid}/transactions`)
     );
 
-    // 4. Health log listener
+    // 3. Health log listener
     const healthDocRef = doc(db, 'users', uid, 'health', '2026-09-05');
     const unsubHealth = onSnapshot(
       healthDocRef,
@@ -242,7 +244,6 @@ export default function App() {
 
     return () => {
       unsubTasks();
-      unsubHabits();
       unsubTrans();
       unsubHealth();
     };
@@ -290,31 +291,29 @@ export default function App() {
 
   // Dynamic Life Balance Score Computation
   const balanceIndex: LifeBalanceIndex = useMemo(() => {
-    const totalT = tasks.length || 1;
+    const totalT = tasks.length;
     const completedT = tasks.filter((t) => t.completed).length;
-    const workScore = tasks.length === 0 ? 80 : Math.round((completedT / totalT) * 100);
-
-    const totalH = habits.length || 1;
-    const completedH = habits.filter((h) => h.completedToday).length;
-    const habitScore = habits.length === 0 ? 75 : Math.round((completedH / totalH) * 100);
+    const workScore = totalT === 0 ? 50 : Math.round((completedT / totalT) * 100);
 
     const screenPenalty = health.continuousWorkMinutes > 75 ? 20 : health.continuousWorkMinutes > 60 ? 10 : 0;
     const waterBonus = Math.min(20, (health.waterGlasses / (health.targetWaterGlasses || 8)) * 20);
-    const sleepBonus = health.sleepHours >= 7 ? 20 : 10;
-    const healthScore = Math.max(25, Math.min(100, Math.round(55 + waterBonus + sleepBonus - screenPenalty)));
+    const sleepBonus = health.sleepHours >= 7 ? 15 : health.sleepHours > 0 ? 5 : 0;
+    const healthScore = Math.max(25, Math.min(100, Math.round(50 + waterBonus + sleepBonus - screenPenalty)));
 
     const todayExpenses = finances.transactions
       .filter((t) => t.type === 'expense')
       .reduce((acc, curr) => acc + curr.amount, 0);
     const budgetUsageRatio = todayExpenses / (finances.dailyBudget || 1);
-    const financeScore = budgetUsageRatio <= 0.8 ? 95 : budgetUsageRatio <= 1.0 ? 80 : 50;
+    const financeScore = todayExpenses === 0
+      ? 50
+      : budgetUsageRatio <= 0.8 ? 80 : budgetUsageRatio <= 1.0 ? 65 : 35;
 
-    const overall = Math.round(workScore * 0.3 + healthScore * 0.25 + habitScore * 0.25 + financeScore * 0.2);
+    const overall = Math.round(workScore * 0.4 + healthScore * 0.35 + financeScore * 0.25);
 
     let summary = 'Harmonious pace across work, health, and finances.';
     if (health.continuousWorkMinutes >= 75) {
       summary = 'High screen fatigue detected. Optical reset and screen break recommended.';
-    } else if (workScore > 70 && habitScore > 70) {
+    } else if (workScore > 70 || healthScore > 70 || financeScore > 70) {
       summary = 'Exceptional discipline today. Remember to protect evening wind-down.';
     }
 
@@ -330,16 +329,15 @@ export default function App() {
       workSchoolScore: workScore,
       healthWellnessScore: healthScore,
       financialDisciplineScore: financeScore,
-      habitConsistencyScore: habitScore,
       summary,
       protectiveAdvice,
     };
-  }, [tasks, habits, health, finances]);
+  }, [tasks, health, finances]);
 
   // Live Cross-Pillar System Telemetry & Recommendation Engine
   const systemDetection = useMemo(() => {
-    return calculateSystemDetectionsAndRecommendations(tasks, habits, health, finances, userProfile);
-  }, [tasks, habits, health, finances, userProfile]);
+    return calculateSystemDetectionsAndRecommendations(tasks, health, finances, userProfile);
+  }, [tasks, health, finances, userProfile]);
 
   // Auth Operations
   const handleGoogleSignIn = async () => {
@@ -364,10 +362,24 @@ export default function App() {
 
   const handleSignOut = async () => {
     try {
+      await waitForPendingWrites(db);
       await signOut(auth);
       showToast('Signed out.');
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const clearLegacyWorkspaceData = async (uid: string) => {
+    try {
+      const taskRef = collection(db, 'users', uid, 'tasks');
+      const tasksSnapshot = await getDocs(taskRef);
+
+      await Promise.all(
+        tasksSnapshot.docs.map((docSnap) => deleteDoc(doc(db, 'users', uid, 'tasks', docSnap.id)))
+      );
+    } catch (err) {
+      console.error('Failed to clear legacy workspace data:', err);
     }
   };
 
@@ -382,6 +394,7 @@ export default function App() {
     wakeTime: string;
     bedTime: string;
     primaryGoal: string;
+    subjects: SchoolSubject[];
   }) => {
     if (!currentUser) return;
 
@@ -396,46 +409,37 @@ export default function App() {
       wakeTime: info.wakeTime,
       bedTime: info.bedTime,
       primaryGoal: info.primaryGoal,
+      subjects: info.subjects,
       onboardingCompleted: true,
       createdAt: new Date().toISOString(),
     };
 
     const path = `users/${currentUser.uid}`;
     try {
+      await clearLegacyWorkspaceData(currentUser.uid);
       await setDoc(doc(db, 'users', currentUser.uid), profileData);
       setUserProfile(profileData);
-      setFinances((f) => ({
-        ...f,
+      setFinances({
         currency: info.currency,
         dailyBudget: info.dailyBudget,
+        weeklyBudget: info.dailyBudget * 7,
+        monthlyBudget: info.dailyBudget * 30,
         monthlySavingsTarget: info.monthlySavingsTarget,
-      }));
-
-      // Create foundational anchor habit based on user profile
-      const habitId = `h-${Date.now()}`;
-      await setDoc(doc(db, 'users', currentUser.uid, 'habits', habitId), {
-        userId: currentUser.uid,
-        title: info.role === 'student' ? 'Daily Review & Problem Solving' : 'Morning Focus & Deep Work Block',
-        category: info.role === 'student' ? 'school' : 'work',
-        timeOfDay: 'morning',
-        streak: 1,
-        bestStreak: 1,
-        completedToday: false,
-        targetPerWeek: 7,
+        currentSavings: 0,
+        transactions: [],
       });
-
-      // Create primary goal task
-      const taskId = `task-${Date.now()}`;
-      await setDoc(doc(db, 'users', currentUser.uid, 'tasks', taskId), {
-        userId: currentUser.uid,
-        title: info.primaryGoal,
-        category: info.role === 'student' ? 'school' : 'work',
-        priority: 'high',
-        tag: 'Primary Goal',
-        estimatedMinutes: 60,
-        completed: false,
-        dueDate: '2026-09-05',
-        createdAt: new Date().toISOString(),
+      setTasks([]);
+      setHealth({
+        screenTimeMinutes: 0,
+        continuousWorkMinutes: 0,
+        sleepHours: Math.max(6, Math.min(9, 10 - Number((Number(info.wakeTime.split(':')[0]) - Number(info.bedTime.split(':')[0])).toFixed(1)))),
+        waterGlasses: 0,
+        targetWaterGlasses: 8,
+        energyLevel: 3,
+        lastBreakTime: Date.now(),
+        breaksTakenToday: 0,
+        activeTimerRunning: false,
+        activeTimerSeconds: 0,
       });
 
       showToast(`Welcome, ${info.name}! All Araw AI features are unlocked.`);
@@ -453,42 +457,76 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tasks,
-          habits,
           health,
+          subjects: userProfile?.subjects || [],
           timeOfDay: 'Morning / Focus block',
         }),
       });
       if (res.ok) {
         const data = await res.json();
         setNextAction(data);
+        if (currentUser) {
+          await setDoc(
+            doc(db, 'users', currentUser.uid),
+            { latestNextAction: data },
+            { merge: true }
+          );
+        }
         showToast('Araw AI updated your Next Best Action.');
       }
     } catch (e) {
       console.error(e);
     }
-  }, [tasks, habits, health]);
+  }, [tasks, health, userProfile?.subjects]);
 
-  const handleRefreshAiInsights = useCallback(async () => {
+  const handleRefreshAiInsights = useCallback(async (taskOverride?: TaskItem[]) => {
     try {
       const res = await fetch('/api/ai/insights', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tasks,
-          habits,
+          tasks: taskOverride || tasks,
           health,
           finances,
+          userProfile,
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.insights) setInsights(data.insights);
+        if (data.insights) {
+          setInsights(data.insights);
+          if (currentUser) {
+            await setDoc(
+              doc(db, 'users', currentUser.uid),
+              { latestInsights: data.insights },
+              { merge: true }
+            );
+          }
+        }
         showToast('Fresh AI Diagnostics recorded.');
       }
     } catch (e) {
       console.error(e);
     }
-  }, [tasks, habits, health, finances]);
+  }, [tasks, health, finances, userProfile, currentUser]);
+
+  const handleAssistantContextChange = async (message: string) => {
+    const normalizedMessage = message.toLowerCase();
+    const matchingTask = tasks.find((task) => {
+      const title = task.title.toLowerCase();
+      return normalizedMessage.includes('complete') || normalizedMessage.includes('finished')
+        ? normalizedMessage.includes(title)
+        : false;
+    });
+
+    let updatedTasks = tasks;
+    if (matchingTask && !matchingTask.completed) {
+      await handleToggleTask(matchingTask.id);
+      updatedTasks = tasks.map((task) => task.id === matchingTask.id ? { ...task, completed: true } : task);
+    }
+
+    await handleRefreshAiInsights(updatedTasks);
+  };
 
   // Firestore Tasks Operations
   const handleToggleTask = async (id: string) => {
@@ -530,6 +568,7 @@ export default function App() {
           userId: currentUser.uid,
           title: item.title,
           category: item.category,
+          subject: item.subject,
           taskType: item.taskType,
           priority: item.priority || 'medium',
           tag: item.tag || 'General',
@@ -557,16 +596,18 @@ export default function App() {
     }
   };
 
-  const handleToggleSubtask = (taskId: string, subtaskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        const subtasks = t.subtasks?.map((s) =>
-          s.id === subtaskId ? { ...s, completed: !s.completed } : s
-        );
-        return { ...t, subtasks };
-      })
+  const handleToggleSubtask = async (taskId: string, subtaskId: string) => {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) return;
+
+    const subtasks = task.subtasks?.map((subtask) =>
+      subtask.id === subtaskId ? { ...subtask, completed: !subtask.completed } : subtask
     );
+    setTasks((prev) => prev.map((item) => item.id === taskId ? { ...item, subtasks } : item));
+
+    if (currentUser) {
+      await updateDoc(doc(db, 'users', currentUser.uid, 'tasks', taskId), { subtasks });
+    }
   };
 
   const handleDecomposeTaskWithAi = async (taskId: string, title: string, category: string) => {
@@ -587,84 +628,14 @@ export default function App() {
           setTasks((prev) =>
             prev.map((t) => (t.id === taskId ? { ...t, subtasks: formatted } : t))
           );
+          if (currentUser) {
+            await updateDoc(doc(db, 'users', currentUser.uid, 'tasks', taskId), { subtasks: formatted });
+          }
           showToast(`Deconstructed "${title}" into ${formatted.length} actionable steps.`);
         }
       }
     } catch (e) {
       console.error(e);
-    }
-  };
-
-  // Firestore Habits Operations
-  const handleToggleHabit = async (id: string) => {
-    const habit = habits.find((h) => h.id === id);
-    if (!habit) return;
-
-    const nextDone = !habit.completedToday;
-    const newStreak = nextDone ? habit.streak + 1 : Math.max(0, habit.streak - 1);
-
-    setHabits((prev) =>
-      prev.map((h) =>
-        h.id === id ? { ...h, completedToday: nextDone, streak: newStreak } : h
-      )
-    );
-
-    if (currentUser) {
-      const path = `users/${currentUser.uid}/habits/${id}`;
-      try {
-        await updateDoc(doc(db, 'users', currentUser.uid, 'habits', id), {
-          completedToday: nextDone,
-          streak: newStreak,
-        });
-      } catch (err) {
-        handleFirestoreError(err, OperationType.UPDATE, path);
-      }
-    }
-  };
-
-  const handleAddHabit = async (newHabit: any) => {
-    const habitId = `h-${Date.now()}`;
-    const item: HabitItem = {
-      ...newHabit,
-      id: habitId,
-      durationMinutes: newHabit.durationMinutes || 20,
-      streak: 1,
-      bestStreak: 1,
-      completedToday: false,
-      history: {},
-    };
-    setHabits((prev) => [...prev, item]);
-    showToast(`Locked in habit: ${item.title} (${item.durationMinutes}m)`);
-
-    if (currentUser) {
-      const path = `users/${currentUser.uid}/habits/${habitId}`;
-      try {
-        await setDoc(doc(db, 'users', currentUser.uid, 'habits', habitId), {
-          userId: currentUser.uid,
-          title: item.title,
-          category: item.category,
-          timeOfDay: item.timeOfDay,
-          durationMinutes: item.durationMinutes,
-          streak: 1,
-          bestStreak: 1,
-          completedToday: false,
-          targetPerWeek: item.targetPerWeek || 7,
-        });
-      } catch (err) {
-        handleFirestoreError(err, OperationType.CREATE, path);
-      }
-    }
-  };
-
-  const handleDeleteHabit = async (id: string) => {
-    setHabits((prev) => prev.filter((h) => h.id !== id));
-    if (currentUser) {
-      const path = `users/${currentUser.uid}/habits/${id}`;
-      try {
-        await deleteDoc(doc(db, 'users', currentUser.uid, 'habits', id));
-      } catch (err) {
-        handleFirestoreError(err, OperationType.DELETE, path);
-      }
     }
   };
 
@@ -814,17 +785,56 @@ export default function App() {
     setFocusTimerSeconds(25 * 60);
   };
 
-  const handleResetData = () => {
+  const handleResetData = async () => {
+    if (!currentUser) return;
+
+    const uid = currentUser.uid;
+    const resetCollections = ['tasks', 'transactions'];
+    try {
+      await Promise.all(resetCollections.map(async (collectionName) => {
+        const snapshot = await getDocs(collection(db, 'users', uid, collectionName));
+        await Promise.all(snapshot.docs.map((item) => deleteDoc(item.ref)));
+      }));
+
+      await deleteDoc(doc(db, 'users', uid, 'health', '2026-09-05'));
+    } catch (err) {
+      console.error('Failed to reset workspace records:', err);
+      showToast('Workspace reset failed. Please try again.');
+      return;
+    }
+
     setTasks([]);
-    setHabits([]);
     setFinances({
       currency: userProfile?.currency || '₱',
-      dailyBudget: userProfile?.dailyBudget || 500,
-      monthlySavingsTarget: userProfile?.monthlySavingsTarget || 5000,
+      dailyBudget: userProfile?.dailyBudget || 0,
+      weeklyBudget: (userProfile?.dailyBudget || 0) * 7,
+      monthlyBudget: (userProfile?.dailyBudget || 0) * 30,
+      monthlySavingsTarget: userProfile?.monthlySavingsTarget || 0,
       currentSavings: 0,
       transactions: [],
     });
-    showToast('Cleaned records. Ready for your actual daily tracking.');
+    setHealth({
+      screenTimeMinutes: 0,
+      continuousWorkMinutes: 0,
+      sleepHours: 0,
+      waterGlasses: 0,
+      targetWaterGlasses: 8,
+      energyLevel: 3,
+      lastBreakTime: Date.now(),
+      breaksTakenToday: 0,
+      activeTimerRunning: false,
+      activeTimerSeconds: 0,
+    });
+    setInsights([]);
+    setNextAction(INITIAL_NEXT_ACTION);
+    setIsFocusRunning(false);
+    setFocusTimerSeconds(25 * 60);
+    await setDoc(
+      doc(db, 'users', uid),
+      { latestInsights: [], latestNextAction: INITIAL_NEXT_ACTION },
+      { merge: true }
+    );
+    showToast('Workspace reset. Your profile is preserved and your balance starts at 50.');
   };
 
   // Determine if main features are locked
@@ -931,8 +941,6 @@ export default function App() {
                   handleTakeScreenBreak();
                 } else if (lower.includes('expense') || lower.includes('budget') || lower.includes('savings')) {
                   setActiveTab('finance');
-                } else if (lower.includes('habit')) {
-                  setActiveTab('habits');
                 } else if (lower.includes('sleep') || lower.includes('rest') || lower.includes('health')) {
                   setActiveTab('health');
                 } else {
@@ -947,7 +955,7 @@ export default function App() {
                 } else if (action.targetPillar) {
                   setActiveTab(action.targetPillar as any);
                 } else if (action.pillar) {
-                  const target = action.pillar === 'work_school' ? 'work_school' : action.pillar === 'health' ? 'health' : action.pillar === 'finance' ? 'finance' : 'habits';
+                  const target = action.pillar === 'work_school' ? 'work_school' : action.pillar === 'health' ? 'health' : 'finance';
                   setActiveTab(target);
                 }
               }}
@@ -1004,18 +1012,6 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => setActiveTab('habits')}
-                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
-                  activeTab === 'habits'
-                    ? 'bg-stone-900 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-                }`}
-              >
-                <Flame className="w-4 h-4" />
-                <span>Habits</span>
-              </button>
-
-              <button
                 onClick={() => setActiveTab('analytics')}
                 className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'analytics'
@@ -1034,13 +1030,12 @@ export default function App() {
                 <LifeBalanceOverview
                   balanceIndex={balanceIndex}
                   tasks={tasks}
-                  habits={habits}
                   health={health}
                   finances={finances}
                   onNavigateTab={(tab) => setActiveTab(tab as any)}
                 />
 
-                {/* Quick Glimpse: Top Tasks & Active Habits */}
+                {/* Quick Glimpse: Top Tasks */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Left: Pending Work & School */}
                   <div className="rounded-2xl bg-white border border-stone-200 p-5 shadow-2xs space-y-3">
@@ -1088,55 +1083,6 @@ export default function App() {
                       )}
                     </div>
                   </div>
-
-                  {/* Right: Daily Habit Anchor */}
-                  <div className="rounded-2xl bg-white border border-stone-200 p-5 shadow-2xs space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                        <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
-                        <span>Today's Habit Discipline</span>
-                      </h3>
-                      <button
-                        onClick={() => setActiveTab('habits')}
-                        className="text-xs font-semibold text-purple-600 hover:underline"
-                      >
-                        View All Streaks →
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {habits.length === 0 ? (
-                        <p className="text-xs text-stone-500 py-3 text-center border border-dashed border-stone-200 rounded-xl">
-                          No habits configured yet. Go to "Habits & Streaks" to set up atomic habits.
-                        </p>
-                      ) : (
-                        habits.slice(0, 3).map((habit) => (
-                          <div
-                            key={habit.id}
-                            className="p-3 rounded-xl border border-stone-100 hover:bg-stone-50 flex items-center justify-between text-xs"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <input
-                                type="checkbox"
-                                checked={habit.completedToday}
-                                onChange={() => handleToggleHabit(habit.id)}
-                                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-                              />
-                              <span
-                                className={`font-semibold ${
-                                  habit.completedToday ? 'text-stone-500' : 'text-stone-900'
-                                }`}
-                              >
-                                {habit.title}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
-                              🔥 {habit.streak}d
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -1149,6 +1095,7 @@ export default function App() {
                 onDeleteTask={handleDeleteTask}
                 onToggleSubtask={handleToggleSubtask}
                 onDecomposeTaskWithAi={handleDecomposeTaskWithAi}
+                subjects={userProfile?.subjects || []}
                 focusTimerSeconds={focusTimerSeconds}
                 isFocusRunning={isFocusRunning}
                 activeFocusTaskTitle={activeFocusTaskTitle}
@@ -1176,29 +1123,21 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'habits' && (
-              <HabitTracker
-                habits={habits}
-                onToggleHabit={handleToggleHabit}
-                onAddHabit={handleAddHabit}
-                onDeleteHabit={handleDeleteHabit}
-                onStartTimer={(title, mins) => handleStartFocus(title, mins)}
-              />
-            )}
-
             {activeTab === 'analytics' && (
               <AnalyticsAndInsights
                 insights={insights}
                 balanceIndex={balanceIndex}
                 tasks={tasks}
-                habits={habits}
                 health={health}
                 finances={finances}
                 onRefreshAiInsights={handleRefreshAiInsights}
                 onActOnInsight={(id) => {
-                  setInsights((prev) =>
-                    prev.map((ins) => (ins.id === id ? { ...ins, actedUpon: true } : ins))
-                  );
+                  const updatedInsights = insights.map((ins) => (ins.id === id ? { ...ins, actedUpon: true } : ins));
+                  setInsights(updatedInsights);
+                  if (currentUser) {
+                    setDoc(doc(db, 'users', currentUser.uid), { latestInsights: updatedInsights }, { merge: true })
+                      .catch((error) => console.error('Failed to persist insight action:', error));
+                  }
                   showToast('Insight applied to today’s schedule.');
                 }}
               />
@@ -1225,13 +1164,13 @@ export default function App() {
       <AiCoachDrawer
         isOpen={isCoachOpen}
         onClose={() => setIsCoachOpen(false)}
+        onContextChange={handleAssistantContextChange}
         userContext={{
           userName: userProfile?.name,
           role: userProfile?.role,
+          profile: userProfile,
           tasksCount: tasks.length,
           pendingTasksCount: tasks.filter((t) => !t.completed).length,
-          habitsCount: habits.length,
-          completedHabitsToday: habits.filter((h) => h.completedToday).length,
           screenTimeMinutes: health.screenTimeMinutes,
           continuousWorkMinutes: health.continuousWorkMinutes,
           waterGlasses: health.waterGlasses,
@@ -1239,6 +1178,10 @@ export default function App() {
           dailyBudget: finances.dailyBudget,
           currency: finances.currency,
           balanceScore: balanceIndex.overallScore,
+          subjects: userProfile?.subjects || [],
+          pendingSchoolwork: tasks
+            .filter((task) => task.category === 'school' && !task.completed)
+            .map((task) => ({ title: task.title, subject: task.subject, dueDate: task.dueDate, dueTime: task.dueTime })),
         }}
       />
 

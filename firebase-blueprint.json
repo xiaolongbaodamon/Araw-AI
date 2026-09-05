@@ -37,22 +37,6 @@
       },
       "required": ["userId", "title", "category", "completed"]
     },
-    "Habit": {
-      "title": "Habit",
-      "description": "Habit item tracked across morning, afternoon, evening slots.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "maxLength": 128 },
-        "title": { "type": "string", "maxLength": 150 },
-        "category": { "type": "string", "enum": ["health", "work", "school", "finance", "mindfulness"] },
-        "timeOfDay": { "type": "string", "enum": ["morning", "afternoon", "evening", "anytime"] },
-        "streak": { "type": "number" },
-        "bestStreak": { "type": "number" },
-        "completedToday": { "type": "boolean" },
-        "targetPerWeek": { "type": "number" }
-      },
-      "required": ["userId", "title", "category", "timeOfDay", "completedToday"]
-    },
     "HealthLog": {
       "title": "HealthLog",
       "description": "Daily screen time and health telemetry log.",
@@ -92,10 +76,6 @@
     "/users/{userId}/tasks/{taskId}": {
       "schema": { "$ref": "#/entities/Task" },
       "description": "User specific work and school tasks"
-    },
-    "/users/{userId}/habits/{habitId}": {
-      "schema": { "$ref": "#/entities/Habit" },
-      "description": "User daily habits and streaks"
     },
     "/users/{userId}/health/{dateId}": {
       "schema": { "$ref": "#/entities/HealthLog" },

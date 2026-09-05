@@ -14,6 +14,7 @@ import {
   Briefcase,
   Laptop,
 } from 'lucide-react';
+import { SchoolSubject } from '../types';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ interface OnboardingModalProps {
     wakeTime: string;
     bedTime: string;
     primaryGoal: string;
+    subjects: SchoolSubject[];
   }) => Promise<void>;
   onSignOut: () => void;
 }
@@ -47,6 +49,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [wakeTime, setWakeTime] = useState('07:00');
   const [bedTime, setBedTime] = useState('23:00');
   const [primaryGoal, setPrimaryGoal] = useState('');
+  const [subjects, setSubjects] = useState<SchoolSubject[]>([
+    { id: 'subject-1', name: '', weeklyMinutes: 180 },
+  ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +77,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         wakeTime,
         bedTime,
         primaryGoal: primaryGoal.trim() || 'Achieve balanced daily focus and avoid burnout.',
+        subjects: role === 'student'
+          ? subjects.filter((subject) => subject.name.trim()).map((subject) => ({
+              ...subject,
+              name: subject.name.trim(),
+              weeklyMinutes: Number(subject.weeklyMinutes) || 60,
+            }))
+          : [],
       });
     } catch (err: any) {
       console.error(err);
@@ -196,6 +208,64 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               </div>
             </div>
           </div>
+
+          {role === 'student' && (
+            <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-200 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 font-bold text-indigo-950">
+                  <GraduationCap className="w-3.5 h-3.5 text-indigo-700" />
+                  <span>Your Subjects & Weekly Study Time</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSubjects((current) => [...current, { id: `subject-${Date.now()}`, name: '', weeklyMinutes: 180 }])}
+                  className="text-[11px] font-semibold text-indigo-700 hover:text-indigo-950"
+                >
+                  + Add subject
+                </button>
+              </div>
+              <p className="text-[11px] text-indigo-800/80">
+                This helps Araw prioritize the subject with the nearest deadline and the least planned study time.
+              </p>
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr_8rem_auto] gap-2 text-[10px] font-semibold uppercase tracking-wide text-indigo-800/70">
+                  <span>Subject</span>
+                  <span>Minutes per week</span>
+                  <span aria-hidden="true"></span>
+                </div>
+                {subjects.map((subject, index) => (
+                  <div key={subject.id} className="grid grid-cols-[1fr_8rem_auto] gap-2 items-center">
+                    <input
+                      type="text"
+                      required={index === 0}
+                      placeholder="Subject name, e.g. Calculus"
+                      value={subject.name}
+                      onChange={(e) => setSubjects((current) => current.map((item) => item.id === subject.id ? { ...item, name: e.target.value } : item))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white"
+                    />
+                    <input
+                      type="number"
+                      min="30"
+                      step="30"
+                      required={index === 0}
+                      value={subject.weeklyMinutes}
+                      onChange={(e) => setSubjects((current) => current.map((item) => item.id === subject.id ? { ...item, weeklyMinutes: Number(e.target.value) } : item))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white"
+                      aria-label={`${subject.name || 'Subject'} weekly minutes`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSubjects((current) => current.length === 1 ? current : current.filter((item) => item.id !== subject.id))}
+                      className="px-2 py-1.5 text-indigo-700 hover:text-rose-700"
+                      title="Remove subject"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Section 3: Financial Guardrails */}
           <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
