@@ -1,0 +1,7 @@
+{
+  "name": "Araw AI - Daily Life OS",
+  "description": "Intelligent platform unifying work, school, health, and financial wellness with real-time analytics, habit tracking, and proactive AI coaching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

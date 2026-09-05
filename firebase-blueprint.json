@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and onboarding configuration for the Araw AI Life OS.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["student", "professional", "freelancer", "other"] },
+        "dailyWorkTargetMinutes": { "type": "number" },
+        "dailyBudget": { "type": "number" },
+        "monthlySavingsTarget": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 5 },
+        "wakeTime": { "type": "string", "maxLength": 10 },
+        "bedTime": { "type": "string", "maxLength": 10 },
+        "primaryGoal": { "type": "string", "maxLength": 300 },
+        "onboardingCompleted": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["userId", "name", "role", "onboardingCompleted", "createdAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "User work or school assignment item.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "enum": ["work", "school"] },
+        "priority": { "type": "string", "enum": ["urgent", "high", "medium", "low"] },
+        "tag": { "type": "string", "maxLength": 50 },
+        "estimatedMinutes": { "type": "number" },
+        "dueDate": { "type": "string", "maxLength": 50 },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["userId", "title", "category", "completed"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "Habit item tracked across morning, afternoon, evening slots.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "category": { "type": "string", "enum": ["health", "work", "school", "finance", "mindfulness"] },
+        "timeOfDay": { "type": "string", "enum": ["morning", "afternoon", "evening", "anytime"] },
+        "streak": { "type": "number" },
+        "bestStreak": { "type": "number" },
+        "completedToday": { "type": "boolean" },
+        "targetPerWeek": { "type": "number" }
+      },
+      "required": ["userId", "title", "category", "timeOfDay", "completedToday"]
+    },
+    "HealthLog": {
+      "title": "HealthLog",
+      "description": "Daily screen time and health telemetry log.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "screenTimeMinutes": { "type": "number" },
+        "continuousWorkMinutes": { "type": "number" },
+        "waterGlasses": { "type": "number" },
+        "targetWaterGlasses": { "type": "number" },
+        "sleepHours": { "type": "number" },
+        "breaksTakenToday": { "type": "number" }
+      },
+      "required": ["userId", "date"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial expense or savings deposit record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["expense", "savings"] },
+        "category": { "type": "string", "maxLength": 100 },
+        "note": { "type": "string", "maxLength": 200 },
+        "date": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["userId", "amount", "type", "category"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profile and onboarding settings"
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "User specific work and school tasks"
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": { "$ref": "#/entities/Habit" },
+      "description": "User daily habits and streaks"
+    },
+    "/users/{userId}/health/{dateId}": {
+      "schema": { "$ref": "#/entities/HealthLog" },
+      "description": "User daily health, screen time, and hydration log"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "User financial transactions"
+    }
+  }
+}

@@ -1,0 +1,134 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global default-deny catch-all to prevent unmapped access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Entity validation blueprints
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'name', 'role', 'onboardingCompleted', 'createdAt'])
+        && data.userId == request.auth.uid
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.role in ['student', 'professional', 'freelancer', 'other']
+        && data.onboardingCompleted is bool
+        && data.createdAt is string && data.createdAt.size() <= 50
+        && (!('dailyWorkTargetMinutes' in data) || (data.dailyWorkTargetMinutes is number && data.dailyWorkTargetMinutes >= 0 && data.dailyWorkTargetMinutes <= 1440))
+        && (!('dailyBudget' in data) || (data.dailyBudget is number && data.dailyBudget >= 0 && data.dailyBudget <= 10000000))
+        && (!('monthlySavingsTarget' in data) || (data.monthlySavingsTarget is number && data.monthlySavingsTarget >= 0 && data.monthlySavingsTarget <= 100000000))
+        && (!('currency' in data) || (data.currency is string && data.currency.size() <= 5))
+        && (!('wakeTime' in data) || (data.wakeTime is string && data.wakeTime.size() <= 10))
+        && (!('bedTime' in data) || (data.bedTime is string && data.bedTime.size() <= 10))
+        && (!('primaryGoal' in data) || (data.primaryGoal is string && data.primaryGoal.size() <= 300));
+    }
+
+    function isValidTask(data, userId) {
+      return data.keys().hasAll(['userId', 'title', 'category', 'completed'])
+        && data.userId == userId && data.userId == request.auth.uid
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.category in ['work', 'school']
+        && data.completed is bool
+        && (!('priority' in data) || data.priority in ['urgent', 'high', 'medium', 'low'])
+        && (!('tag' in data) || (data.tag is string && data.tag.size() <= 50))
+        && (!('estimatedMinutes' in data) || (data.estimatedMinutes is number && data.estimatedMinutes >= 0 && data.estimatedMinutes <= 1440))
+        && (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 50))
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
+    }
+
+    function isValidHabit(data, userId) {
+      return data.keys().hasAll(['userId', 'title', 'category', 'timeOfDay', 'completedToday'])
+        && data.userId == userId && data.userId == request.auth.uid
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 150
+        && data.category in ['health', 'work', 'school', 'finance', 'mindfulness']
+        && data.timeOfDay in ['morning', 'afternoon', 'evening', 'anytime']
+        && data.completedToday is bool
+        && (!('streak' in data) || (data.streak is number && data.streak >= 0))
+        && (!('bestStreak' in data) || (data.bestStreak is number && data.bestStreak >= 0))
+        && (!('targetPerWeek' in data) || (data.targetPerWeek is number && data.targetPerWeek >= 1 && data.targetPerWeek <= 7));
+    }
+
+    function isValidHealth(data, userId) {
+      return data.keys().hasAll(['userId', 'date'])
+        && data.userId == userId && data.userId == request.auth.uid
+        && data.date is string && data.date.size() <= 20
+        && (!('screenTimeMinutes' in data) || (data.screenTimeMinutes is number && data.screenTimeMinutes >= 0))
+        && (!('continuousWorkMinutes' in data) || (data.continuousWorkMinutes is number && data.continuousWorkMinutes >= 0))
+        && (!('waterGlasses' in data) || (data.waterGlasses is number && data.waterGlasses >= 0))
+        && (!('targetWaterGlasses' in data) || (data.targetWaterGlasses is number && data.targetWaterGlasses >= 0))
+        && (!('sleepHours' in data) || (data.sleepHours is number && data.sleepHours >= 0 && data.sleepHours <= 24))
+        && (!('breaksTakenToday' in data) || (data.breaksTakenToday is number && data.breaksTakenToday >= 0));
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.keys().hasAll(['userId', 'amount', 'type', 'category'])
+        && data.userId == userId && data.userId == request.auth.uid
+        && data.amount is number && data.amount > 0 && data.amount <= 100000000
+        && data.type in ['expense', 'savings']
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 100
+        && (!('note' in data) || (data.note is string && data.note.size() <= 200))
+        && (!('date' in data) || (data.date is string && data.date.size() <= 20));
+    }
+
+    // User Profile Document
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // Tasks Subcollection
+      match /tasks/{taskId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(taskId) && isValidTask(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(taskId) && isValidTask(incoming(), userId) && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(taskId);
+      }
+
+      // Habits Subcollection
+      match /habits/{habitId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(habitId) && isValidHabit(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(habitId) && isValidHabit(incoming(), userId) && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(habitId);
+      }
+
+      // Health Log Subcollection
+      match /health/{dateId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidId(dateId) && isValidHealth(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(dateId);
+      }
+
+      // Financial Transactions Subcollection
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(transactionId) && isValidTransaction(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(transactionId) && isValidTransaction(incoming(), userId) && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+    }
+  }
+}
