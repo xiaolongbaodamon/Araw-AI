@@ -15,6 +15,7 @@ import {
   Laptop,
 } from 'lucide-react';
 import { SchoolDay, SchoolSubject } from '../types';
+import { BrandMark } from './BrandMark';
 
 const schoolDays: SchoolDay[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -105,9 +106,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
         {/* Top Badge */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-stone-900 text-white flex items-center justify-center">
-              <Sun className="w-4 h-4 text-amber-400" />
-            </div>
+            <BrandMark size="sm" />
             <div>
               <h2 className="text-base font-bold text-stone-900">
                 Set Up Your Profile

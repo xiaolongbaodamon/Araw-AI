@@ -53,14 +53,14 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
   });
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-stone-900 via-stone-850 to-stone-950 text-white p-5 lg:p-6 shadow-md border border-stone-800 space-y-5">
+    <div className="rounded-2xl bg-[#1c3028] text-white p-5 lg:p-6 shadow-[0_14px_34px_rgba(28,48,40,0.14)] border border-[#29483a] space-y-5">
       {/* Top Header: System Status */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-stone-800 pb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
         <div className="space-y-1">
           <h2 className="text-base font-bold text-white tracking-tight">
             Daily Status & Suggestions
           </h2>
-          <p className="text-xs text-stone-400">
+          <p className="text-xs text-[#b8cbbd]">
             Overview across deadlines, sleep, and spending based on your profile.
           </p>
         </div>
@@ -69,7 +69,7 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
           <button
             onClick={onRefreshRecommendations}
             disabled={isLoading}
-            className="px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-semibold flex items-center gap-1.5 border border-stone-700 transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-[#d8e5da] text-xs font-semibold flex items-center gap-1.5 border border-white/10 transition-colors disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             <span>{isLoading ? 'Updating...' : 'Refresh'}</span>
@@ -78,9 +78,9 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
       </div>
 
       {/* 4-Pillar Detection Telemetry Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {/* Card 1: Schoolwork & Deadlines */}
-        <div className="rounded-xl bg-stone-800/80 border border-stone-700/70 p-3.5 space-y-2">
+        <div className="rounded-xl bg-white/[0.06] border border-white/10 p-3.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
               <GraduationCap className="w-4 h-4 text-blue-400" />
@@ -115,7 +115,7 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
         </div>
 
         {/* Card 2: Sleep & Health Hours */}
-        <div className="rounded-xl bg-stone-800/80 border border-stone-700/70 p-3.5 space-y-2">
+        <div className="rounded-xl bg-white/[0.06] border border-white/10 p-3.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
               <Moon className="w-4 h-4 text-indigo-400" />
@@ -148,7 +148,7 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
         </div>
 
         {/* Card 3: Financials (Day/Week/Month) */}
-        <div className="rounded-xl bg-stone-800/80 border border-stone-700/70 p-3.5 space-y-2">
+        <div className="rounded-xl bg-white/[0.06] border border-white/10 p-3.5 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
               <Wallet className="w-4 h-4 text-emerald-400" />

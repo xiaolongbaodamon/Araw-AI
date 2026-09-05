@@ -72,18 +72,18 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
   const isWellnessBreak = action.actionType === 'wellness_break' || action.category === 'rest';
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white border border-stone-200 shadow-xs p-5 sm:p-6 transition-all hover:border-stone-300">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-100">
+    <div className="relative overflow-hidden rounded-2xl bg-[#17352a] border border-[#24513d] shadow-[0_16px_36px_rgba(23,53,42,0.16)] p-5 sm:p-6 transition-all">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-lime-300 text-[#17352a] flex items-center justify-center">
             {getPillarIcon(action.category)}
           </div>
           <div>
-            <h2 className="text-sm font-bold text-stone-900">
+            <h2 className="text-sm font-bold text-white">
               Recommended Focus
             </h2>
-            <p className="text-xs text-stone-500">
-              Suggested next step based on deadlines and current progress
+            <p className="text-xs text-[#b8cbbd]">
+              Live recommendation from your tasks, schedule, and recovery state
             </p>
           </div>
         </div>
@@ -93,7 +93,7 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 border border-stone-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-[#c0d1c3] hover:text-white hover:bg-white/10 border border-white/15 transition-colors cursor-pointer"
             title="Refresh recommendation"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-600' : ''}`} />
@@ -105,7 +105,7 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
       <div className="pt-4 sm:flex items-start justify-between gap-6">
         <div className="space-y-2 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-xs uppercase font-bold text-stone-600 tracking-wide px-2 py-0.5 rounded bg-stone-100">
+            <span className="text-xs uppercase font-bold text-lime-200 tracking-wide px-2 py-0.5 rounded bg-white/10">
               {action.category} • ~{action.estimatedMinutes} mins
             </span>
             {health.continuousWorkMinutes >= 75 && !isWellnessBreak && (
@@ -115,11 +115,11 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
             )}
           </div>
 
-          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">
+          <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
             {action.title}
           </h3>
 
-          <p className="text-sm text-stone-600 leading-relaxed max-w-3xl">
+          <p className="text-sm text-[#d0ded2] leading-relaxed max-w-3xl">
             {action.reason}
           </p>
         </div>
@@ -151,7 +151,7 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
 
           <button
             onClick={onMarkCompleted}
-            className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-medium text-stone-700 hover:text-stone-900 hover:bg-stone-100 border border-stone-200 flex items-center justify-center gap-1.5 transition-colors"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-medium text-[#d6e3d8] hover:text-white hover:bg-white/10 border border-white/15 flex items-center justify-center gap-1.5 transition-colors"
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>Mark Done</span>

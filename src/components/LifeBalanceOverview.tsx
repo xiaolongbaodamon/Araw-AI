@@ -42,36 +42,36 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner: Overall Score & Protective Advice */}
-      <div className="rounded-2xl bg-white border border-stone-200 p-5 shadow-xs">
+      <div className="dashboard-surface rounded-2xl p-5 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {/* Radial score badge */}
-            <div className="relative w-16 h-16 rounded-2xl bg-stone-900 text-white flex flex-col items-center justify-center shrink-0 shadow-xs">
-              <span className="text-xl font-extrabold tracking-tight">
+            <div className="relative w-16 h-16 rounded-2xl bg-[#edf5ee] border border-[#d5e5d8] text-[#17352a] flex flex-col items-center justify-center shrink-0">
+              <span className="data-number text-xl font-extrabold">
                 {balanceIndex.overallScore}
               </span>
-              <span className="text-[10px] uppercase font-semibold text-amber-400">Score</span>
+              <span className="text-[10px] uppercase font-semibold text-[#668273]">Score</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-stone-900">
+                <h2 className="text-base font-bold text-[#17352a]">
                   Daily Balance Score
                 </h2>
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-stone-100 text-stone-800">
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#eef4ef] text-[#38604b]">
                   {balanceIndex.overallScore >= 80 ? 'Balanced' : 'Attention needed'}
                 </span>
               </div>
-              <p className="text-xs text-stone-600 mt-0.5 max-w-xl leading-relaxed">
+              <p className="text-xs text-[#63756a] mt-0.5 max-w-xl leading-relaxed">
                 {balanceIndex.summary}
               </p>
             </div>
           </div>
 
-          <div className="px-4 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-800 flex items-start gap-2.5 max-w-md">
-            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="px-4 py-2.5 rounded-xl bg-[#f4f8f3] border border-[#dce8de] text-xs text-[#294638] flex items-start gap-2.5 max-w-md">
+            <ShieldAlert className="w-4 h-4 text-[#bb7a22] shrink-0 mt-0.5" />
             <div>
-              <span className="font-semibold text-stone-900">Recommendation: </span>
-              <span className="text-stone-600">{balanceIndex.protectiveAdvice}</span>
+              <span className="font-semibold text-[#17352a]">Recommendation: </span>
+              <span className="text-[#63756a]">{balanceIndex.protectiveAdvice}</span>
             </div>
           </div>
         </div>
@@ -82,28 +82,28 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
         {/* Pillar 1: Work & School */}
         <div
           onClick={() => onNavigateTab('work_school')}
-          className="group cursor-pointer rounded-xl bg-white border border-stone-200 hover:border-stone-400 p-4 transition-all shadow-2xs hover:shadow-xs"
+          className="group cursor-pointer dashboard-surface rounded-xl hover:border-[#9fbaa5] p-4 transition-all shadow-2xs hover:shadow-xs"
         >
           <div className="flex items-center justify-between pb-2 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
                 <GraduationCap className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+              <span className="eyebrow">
                 Work & School
               </span>
             </div>
             <ArrowUpRight className="w-4 h-4 text-stone-400 group-hover:text-stone-800 transition-colors" />
           </div>
           <div className="pt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-stone-900">
+            <span className="data-number text-2xl font-bold text-[#17352a]">
               {completedTasks}/{tasks.length}
             </span>
             <span className="text-xs font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
               {balanceIndex.workSchoolScore}% Done
             </span>
           </div>
-          <p className="text-[11px] text-stone-600 mt-1">
+            <p className="text-[11px] text-[#63756a] mt-1">
             {tasks.filter((t) => !t.completed && t.priority === 'urgent').length} urgent deadline(s) remaining
           </p>
         </div>
@@ -111,21 +111,21 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
         {/* Pillar 2: Health & Wellness Guardian */}
         <div
           onClick={() => onNavigateTab('health')}
-          className="group cursor-pointer rounded-xl bg-white border border-stone-200 hover:border-stone-400 p-4 transition-all shadow-2xs hover:shadow-xs"
+          className="group cursor-pointer dashboard-surface rounded-xl hover:border-[#9fbaa5] p-4 transition-all shadow-2xs hover:shadow-xs"
         >
           <div className="flex items-center justify-between pb-2 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
                 <HeartPulse className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+              <span className="eyebrow">
                 Health & Rest
               </span>
             </div>
             <ArrowUpRight className="w-4 h-4 text-stone-400 group-hover:text-stone-800 transition-colors" />
           </div>
           <div className="pt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-stone-900">
+            <span className="data-number text-2xl font-bold text-[#17352a]">
               {formatScreenTime(health.screenTimeMinutes)}
             </span>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
@@ -134,7 +134,7 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
               {health.continuousWorkMinutes}m focus block
             </span>
           </div>
-          <p className="text-[11px] text-stone-600 mt-1">
+            <p className="text-[11px] text-[#63756a] mt-1">
             {health.waterGlasses}/{health.targetWaterGlasses} glasses water • {health.sleepHours}h sleep
           </p>
         </div>
@@ -142,21 +142,21 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
         {/* Pillar 3: Financial Discipline */}
         <div
           onClick={() => onNavigateTab('finance')}
-          className="group cursor-pointer rounded-xl bg-white border border-stone-200 hover:border-stone-400 p-4 transition-all shadow-2xs hover:shadow-xs"
+          className="group cursor-pointer dashboard-surface rounded-xl hover:border-[#9fbaa5] p-4 transition-all shadow-2xs hover:shadow-xs"
         >
           <div className="flex items-center justify-between pb-2 border-b border-stone-100">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
                 <Wallet className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+              <span className="eyebrow">
                 Financials
               </span>
             </div>
             <ArrowUpRight className="w-4 h-4 text-stone-400 group-hover:text-stone-800 transition-colors" />
           </div>
           <div className="pt-3 flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-stone-900">
+            <span className="data-number text-2xl font-bold text-[#17352a]">
               {finances.currency}{todayExpenses}
             </span>
             <span className="text-xs font-semibold text-stone-700 bg-stone-100 px-2 py-0.5 rounded">

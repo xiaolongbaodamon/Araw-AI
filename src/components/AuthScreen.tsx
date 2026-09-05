@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Sun,
   Eye,
   EyeOff,
   CheckCircle2,
@@ -18,6 +17,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
 } from '../firebase';
+import { BrandMark } from './BrandMark';
 
 interface AuthScreenProps {
   onSuccess: () => void;
@@ -154,9 +154,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold mx-auto shadow-md shadow-amber-500/10">
-            <Sun className="w-6 h-6" />
-          </div>
+          <BrandMark size="lg" className="mx-auto" />
           <h1 className="text-2xl font-bold tracking-tight text-stone-900">
             {isForgotPassword
               ? 'Reset password'

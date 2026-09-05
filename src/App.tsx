@@ -5,10 +5,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  INITIAL_HEALTH,
-  INITIAL_NEXT_ACTION,
-} from './utils/initialData';
-import {
   TaskItem,
   HealthState,
   FinancialState,
@@ -33,6 +29,7 @@ import { GoalDecomposeModal } from './components/GoalDecomposeModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { FirebaseRulesModal } from './components/FirebaseRulesModal';
 import { AuthScreen } from './components/AuthScreen';
+import { BrandMark } from './components/BrandMark';
 import {
   auth,
   db,
@@ -71,7 +68,6 @@ import {
   UserCheck,
   ShieldCheck,
   ArrowRight,
-  Sun,
 } from 'lucide-react';
 
 export default function App() {
@@ -103,7 +99,6 @@ export default function App() {
     transactions: [],
   });
   const [insights, setInsights] = useState<AiInsight[]>([]);
-  const [nextAction, setNextAction] = useState<NextBestAction>(INITIAL_NEXT_ACTION);
 
   // UI Navigation & Modals
   const [activeTab, setActiveTab] = useState<
@@ -145,8 +140,6 @@ export default function App() {
             const data = snap.data() as UserProfile;
             setUserProfile(data);
             setInsights((data as UserProfile & { latestInsights?: AiInsight[] }).latestInsights || []);
-            const savedNextAction = (data as UserProfile & { latestNextAction?: NextBestAction }).latestNextAction;
-            if (savedNextAction) setNextAction(savedNextAction);
             if (data.currency || data.dailyBudget) {
               setFinances((f) => ({
                 ...f,
@@ -339,6 +332,65 @@ export default function App() {
     return calculateSystemDetectionsAndRecommendations(tasks, health, finances, userProfile);
   }, [tasks, health, finances, userProfile]);
 
+  const recommendedFocus: NextBestAction = useMemo(() => {
+    if (health.continuousWorkMinutes >= 75) {
+      return {
+        title: 'Take a 5-minute screen recovery break',
+        category: 'rest',
+        actionType: 'wellness_break',
+        estimatedMinutes: 5,
+        reason: `You have worked continuously for ${health.continuousWorkMinutes} minutes. Protect your focus by stepping away before starting another task.`,
+        urgency: 'rejuvenating',
+      };
+    }
+
+    const pendingTasks = tasks
+      .filter((task) => !task.completed)
+      .sort((first, second) => {
+        const priorityRank = { urgent: 4, high: 3, medium: 2, low: 1 };
+        const priorityDifference = priorityRank[second.priority] - priorityRank[first.priority];
+        if (priorityDifference !== 0) return priorityDifference;
+        return `${first.dueDate || '9999-12-31'}T${first.dueTime || '23:59'}`
+          .localeCompare(`${second.dueDate || '9999-12-31'}T${second.dueTime || '23:59'}`);
+      });
+
+    const nextTask = pendingTasks[0];
+    if (nextTask) {
+      const subjectLabel = nextTask.subject ? ` for ${nextTask.subject}` : '';
+      return {
+        title: nextTask.title,
+        category: nextTask.category,
+        actionType: nextTask.category === 'school' ? 'study_review' : 'deep_work',
+        estimatedMinutes: nextTask.estimatedMinutes || Math.min(25, userProfile?.dailyWorkTargetMinutes || 25),
+        reason: `${nextTask.priority === 'urgent' ? 'Urgent priority. ' : ''}Focus on this ${nextTask.category === 'school' ? `school task${subjectLabel}` : 'work task'} first. Deadline: ${nextTask.dueDate}${nextTask.dueTime ? ` at ${nextTask.dueTime}` : ''}.`,
+        urgency: nextTask.priority === 'urgent' ? 'urgent' : 'optimal',
+      };
+    }
+
+    const firstSubject = userProfile?.subjects?.[0];
+    if (firstSubject) {
+      return {
+        title: `Review ${firstSubject.name} schedule`,
+        category: 'school',
+        actionType: 'study_review',
+        estimatedMinutes: 10,
+        reason: `You have no pending tasks. Your next scheduled subject is ${firstSubject.name} at ${firstSubject.classTime} on ${firstSubject.classDays.join(', ')}.`,
+        urgency: 'optimal',
+      };
+    }
+
+    return {
+      title: 'Add your first task',
+      category: 'work',
+      actionType: 'deep_work',
+      estimatedMinutes: 10,
+      reason: userProfile?.primaryGoal
+        ? `Your workspace is clear. Add a task connected to your goal: ${userProfile.primaryGoal}.`
+        : 'Your workspace is clear. Add a task to receive a personalized focus recommendation.',
+      urgency: 'optimal',
+    };
+  }, [tasks, health.continuousWorkMinutes, userProfile]);
+
   // Auth Operations
   const handleGoogleSignIn = async () => {
     try {
@@ -449,35 +501,10 @@ export default function App() {
     }
   };
 
-  // AI Actions
+  // The focus card is derived from current records; refreshing checks the same live data again.
   const handleRefreshNextAction = useCallback(async () => {
-    try {
-      const res = await fetch('/api/ai/next-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tasks,
-          health,
-          subjects: userProfile?.subjects || [],
-          timeOfDay: 'Morning / Focus block',
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setNextAction(data);
-        if (currentUser) {
-          await setDoc(
-            doc(db, 'users', currentUser.uid),
-            { latestNextAction: data },
-            { merge: true }
-          );
-        }
-        showToast('Araw AI updated your Next Best Action.');
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [tasks, health, userProfile?.subjects]);
+    showToast('Recommended focus checked against your current records.');
+  }, []);
 
   const handleRefreshAiInsights = useCallback(async (taskOverride?: TaskItem[]) => {
     try {
@@ -826,12 +853,11 @@ export default function App() {
       activeTimerSeconds: 0,
     });
     setInsights([]);
-    setNextAction(INITIAL_NEXT_ACTION);
     setIsFocusRunning(false);
     setFocusTimerSeconds(25 * 60);
     await setDoc(
       doc(db, 'users', uid),
-      { latestInsights: [], latestNextAction: INITIAL_NEXT_ACTION },
+      { latestInsights: [] },
       { merge: true }
     );
     showToast('Workspace reset. Your profile is preserved and your balance starts at 50.');
@@ -841,7 +867,7 @@ export default function App() {
   const isFeaturesLocked = !currentUser || !userProfile?.onboardingCompleted;
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col selection:bg-amber-200">
+    <div className="app-shell min-h-screen text-stone-900 flex flex-col">
       {/* Top Notification Toast */}
       {notification && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold shadow-lg border border-stone-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
@@ -880,7 +906,7 @@ export default function App() {
           /* State 2: Authenticated but Parameters Needed -> Clean Setup Prompt */
           <div className="rounded-3xl bg-white border border-stone-200 p-8 sm:p-12 text-center shadow-lg space-y-6 max-w-xl mx-auto my-12 animate-in fade-in zoom-in-95">
             <div className="w-16 h-16 rounded-2xl bg-stone-900 text-white flex items-center justify-center mx-auto shadow-md">
-              <Sun className="w-8 h-8 text-amber-400" />
+              <BrandMark size="lg" />
             </div>
 
             <div className="space-y-2">
@@ -914,21 +940,24 @@ export default function App() {
         ) : (
           /* State 3: UNLOCKED MAIN SCREEN FEATURES */
           <>
-            {/* Hero: Next Best Action Card */}
             <NextBestActionCard
-              action={nextAction}
+              action={recommendedFocus}
               health={health}
               onRefreshAction={handleRefreshNextAction}
               onStartFocusSprint={(title, duration) => handleStartFocus(title, duration)}
               onMarkCompleted={() => {
-                showToast(`Marked "${nextAction.title}" completed.`);
-                handleRefreshNextAction();
+                const recommendedTask = tasks.find((task) => task.title === recommendedFocus.title && !task.completed);
+                if (recommendedTask) {
+                  void handleToggleTask(recommendedTask.id);
+                  showToast(`Marked "${recommendedTask.title}" completed.`);
+                } else {
+                  showToast('This recommendation is not a task record. Add a task to track completion.');
+                }
               }}
               onTakeBreak={handleTakeScreenBreak}
               isFocusRunning={isFocusRunning}
             />
 
-            {/* LIVE CROSS-PILLAR DETECTION & RECOMMENDATION ENGINE */}
             <SystemDetectionBanner
               detectionData={systemDetection}
               recommendation={systemDetection}
@@ -936,7 +965,7 @@ export default function App() {
               onSelectAction={(actionLabel) => {
                 const lower = actionLabel.toLowerCase();
                 if (lower.includes('sprint') || lower.includes('timer')) {
-                  handleStartFocus('Priority Sprint', 25);
+                  handleStartFocus(recommendedFocus.title, recommendedFocus.estimatedMinutes);
                 } else if (lower.includes('break') || lower.includes('water') || lower.includes('stretch')) {
                   handleTakeScreenBreak();
                 } else if (lower.includes('expense') || lower.includes('budget') || lower.includes('savings')) {
@@ -949,7 +978,7 @@ export default function App() {
               }}
               onExecuteRecommendation={(action) => {
                 if (action.actionType === 'start_focus') {
-                  handleStartFocus(action.targetTitle || 'Priority Task Sprint', 25);
+                  handleStartFocus(recommendedFocus.title, recommendedFocus.estimatedMinutes);
                 } else if (action.actionType === 'break') {
                   handleTakeScreenBreak();
                 } else if (action.targetPillar) {
@@ -962,13 +991,13 @@ export default function App() {
             />
 
             {/* Navigation Tabs Bar */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b border-stone-200 text-xs font-semibold">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar border-b border-[#d5e0d7] text-xs font-semibold">
               <button
                 onClick={() => setActiveTab('overview')}
                 className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'overview'
-                    ? 'bg-stone-900 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                    ? 'bg-[#17352a] text-white shadow-2xs'
+                    : 'text-[#63756a] hover:text-[#17352a] hover:bg-white/70'
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -979,8 +1008,8 @@ export default function App() {
                 onClick={() => setActiveTab('work_school')}
                 className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'work_school'
-                    ? 'bg-stone-900 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                    ? 'bg-[#17352a] text-white shadow-2xs'
+                    : 'text-[#63756a] hover:text-[#17352a] hover:bg-white/70'
                 }`}
               >
                 <GraduationCap className="w-4 h-4" />
@@ -991,8 +1020,8 @@ export default function App() {
                 onClick={() => setActiveTab('health')}
                 className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'health'
-                    ? 'bg-stone-900 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                    ? 'bg-[#17352a] text-white shadow-2xs'
+                    : 'text-[#63756a] hover:text-[#17352a] hover:bg-white/70'
                 }`}
               >
                 <HeartPulse className="w-4 h-4" />
@@ -1003,8 +1032,8 @@ export default function App() {
                 onClick={() => setActiveTab('finance')}
                 className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'finance'
-                    ? 'bg-stone-900 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                    ? 'bg-[#17352a] text-white shadow-2xs'
+                    : 'text-[#63756a] hover:text-[#17352a] hover:bg-white/70'
                 }`}
               >
                 <Wallet className="w-4 h-4" />
@@ -1015,8 +1044,8 @@ export default function App() {
                 onClick={() => setActiveTab('analytics')}
                 className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'analytics'
-                    ? 'bg-stone-900 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                    ? 'bg-[#17352a] text-white shadow-2xs'
+                    : 'text-[#63756a] hover:text-[#17352a] hover:bg-white/70'
                 }`}
               >
                 <BarChart3 className="w-4 h-4" />

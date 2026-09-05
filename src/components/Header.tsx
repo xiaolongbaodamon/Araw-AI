@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Sparkles, MessageSquareText, Layers, RotateCcw, ShieldCheck, Timer, User as UserIcon, LogOut, LogIn } from 'lucide-react';
+import { Sparkles, MessageSquareText, Layers, RotateCcw, ShieldCheck, Timer, User as UserIcon, LogOut, LogIn } from 'lucide-react';
 import { LifeBalanceIndex } from '../types';
+import { BrandMark } from './BrandMark';
 
 interface HeaderProps {
   balanceIndex: LifeBalanceIndex;
@@ -58,15 +59,14 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="border-b border-stone-200 bg-white/90 backdrop-blur-md sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
+    <header className="border-b border-[#d8e1da] bg-[#fbfdfb]/90 backdrop-blur-md sticky top-0 z-40">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-[4.5rem] flex items-center justify-between gap-4">
         {/* Brand & Mission */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center shadow-xs shrink-0">
-            <Sun className="w-5 h-5" />
-          </div>
+          <BrandMark />
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-stone-900">Araw</h1>
+            <h1 className="text-lg font-bold tracking-tight text-[#17352a]">Araw</h1>
+            <p className="hidden sm:block text-[10px] uppercase tracking-[0.16em] text-[#748378] font-bold">Personal operating system</p>
           </div>
         </div>
 
@@ -87,16 +87,16 @@ export const Header: React.FC<HeaderProps> = ({
           {isAuthenticated ? (
             <>
               {/* Live Balance Pill */}
-              <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-100 border border-stone-200 text-xs">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span className="text-stone-700 font-medium">Balance Index:</span>
-                <span className="font-bold text-stone-900">{balanceIndex.overallScore}/100</span>
+                  <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#edf5ee] border border-[#d5e5d8] text-xs">
+                    <ShieldCheck className="w-4 h-4 text-[#2f7657]" />
+                    <span className="text-[#53665a] font-medium">Balance</span>
+                    <span className="font-bold text-[#17352a]">{balanceIndex.overallScore}<span className="text-[#7b8a80] font-medium">/100</span></span>
               </div>
 
               {/* Goal Decomposer button */}
               <button
                 onClick={onOpenDecomposer}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-[#f1f6f1] text-[#53665a] border border-[#d4dfd6] flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                 <span className="hidden sm:inline">Break Down Goal</span>
@@ -105,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Coach trigger */}
               <button
                 onClick={onOpenCoach}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#17352a] hover:bg-[#234b3b] text-white flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
               >
                 <MessageSquareText className="w-3.5 h-3.5 text-amber-400" />
                 <span>Coach</span>
@@ -115,9 +115,9 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-xs font-semibold text-stone-800 transition-colors"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-[#d4dfd6] hover:bg-[#f1f6f1] text-xs font-semibold text-[#294638] transition-colors"
                 >
-                  <div className="w-6 h-6 rounded-full bg-stone-900 text-white flex items-center justify-center text-[11px] font-bold">
+                  <div className="w-6 h-6 rounded-full bg-[#17352a] text-lime-300 flex items-center justify-center text-[11px] font-bold">
                     {(userName || 'U')[0].toUpperCase()}
                   </div>
                   <span className="hidden md:inline max-w-[120px] truncate">{userName || 'Account'}</span>
