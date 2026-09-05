@@ -106,11 +106,11 @@ export const AiCoachDrawer: React.FC<AiCoachDrawerProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold">Araw 24/7 AI Coach</h3>
+                <h3 className="text-sm font-bold">Assistant</h3>
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
               </div>
               <p className="text-[11px] text-stone-300">
-                Grounded Life Guardian • Powered by Gemini AI
+                Ask about your schedule, goals, and habits
               </p>
             </div>
           </div>

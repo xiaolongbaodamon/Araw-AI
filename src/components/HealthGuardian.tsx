@@ -12,6 +12,10 @@ import {
   Sparkles,
   Play,
   Square,
+  Bed,
+  Sun,
+  AlertTriangle,
+  Heart,
 } from 'lucide-react';
 import { HealthState } from '../types';
 
@@ -31,6 +35,19 @@ export const HealthGuardian: React.FC<HealthGuardianProps> = ({
   const [breathPhase, setBreathPhase] = useState<'Inhale' | 'Hold' | 'Exhale' | 'Rest'>('Inhale');
   const [breathTimer, setBreathTimer] = useState(4);
   const [cyclesCompleted, setCyclesCompleted] = useState(0);
+
+  // Sleep hours state
+  const [sleepInput, setSleepInput] = useState<string>(String(health.sleepHours || 7));
+  const [bedTime, setBedTime] = useState<string>(health.bedTime || '23:00');
+  const [wakeTime, setWakeTime] = useState<string>(health.wakeTime || '06:30');
+  const [sleepQuality, setSleepQuality] = useState<'poor' | 'fair' | 'good' | 'optimal'>(
+    health.sleepQuality || 'good'
+  );
+
+  // Keep local sleepInput in sync if prop changes
+  useEffect(() => {
+    setSleepInput(String(health.sleepHours || 7));
+  }, [health.sleepHours]);
 
   // Box breathing cycle effect
   useEffect(() => {
@@ -55,6 +72,29 @@ export const HealthGuardian: React.FC<HealthGuardianProps> = ({
     return () => clearInterval(interval);
   }, [breathingActive]);
 
+  const handleSaveSleep = (hours: number, quality?: 'poor' | 'fair' | 'good' | 'optimal') => {
+    const validHours = Math.max(0, Math.min(24, Math.round(hours * 10) / 10));
+    setSleepInput(String(validHours));
+    onUpdateHealth({
+      sleepHours: validHours,
+      sleepQuality: quality || sleepQuality,
+      bedTime,
+      wakeTime,
+    });
+  };
+
+  const handleCalculateFromTimes = () => {
+    if (!bedTime || !wakeTime) return;
+    const [bH, bM] = bedTime.split(':').map(Number);
+    const [wH, wM] = wakeTime.split(':').map(Number);
+    let diffMinutes = (wH * 60 + wM) - (bH * 60 + bM);
+    if (diffMinutes < 0) {
+      diffMinutes += 24 * 60; // crossed midnight
+    }
+    const calculatedHours = Math.round((diffMinutes / 60) * 10) / 10;
+    handleSaveSleep(calculatedHours);
+  };
+
   const addWater = () => {
     if (health.waterGlasses < 15) {
       onUpdateHealth({ waterGlasses: health.waterGlasses + 1 });
@@ -78,40 +118,200 @@ export const HealthGuardian: React.FC<HealthGuardianProps> = ({
   };
 
   const isOverScreenLimit = health.continuousWorkMinutes >= 75;
+  const isSleepDeficit = health.sleepHours < 7.0;
 
   return (
     <div className="space-y-6">
-      {/* Wellness Guardian Manifesto Card */}
+      {/* Health & Sleep Header */}
       <div className="rounded-2xl bg-white border border-stone-200 p-5 shadow-xs">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded flex items-center gap-1">
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>Active Wellness Guardian</span>
-              </span>
-              <span className="text-xs text-stone-600">Combating Digital Burnout</span>
-            </div>
-            <h2 className="text-lg font-bold text-stone-900">
-              Health, Screen Limits & Recovery Shield
+            <h2 className="text-base font-bold text-stone-900">
+              Health & Sleep
             </h2>
-            <p className="text-xs text-stone-600 max-w-xl">
-              "While other apps race to keep people addicted to screens, Araw AI is designed to help you log off. Success is measured in lives improved, not screen time."
+            <p className="text-xs text-stone-500 max-w-xl">
+              Log daily sleep hours, hydration, and screen time breaks.
             </p>
           </div>
 
           <button
             onClick={() => setBreathingActive(true)}
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-colors"
+            className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs flex items-center gap-2 transition-colors cursor-pointer"
           >
-            <Wind className="w-4 h-4" />
-            <span>1-Minute Nervous System Reset</span>
+            <Wind className="w-4 h-4 text-emerald-400" />
+            <span>Breathing Exercise</span>
           </button>
         </div>
       </div>
 
+      {/* DEDICATED SLEEP HOURS INPUT & RECOVERY LOG */}
+      <div className="rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-stone-900 text-white p-5 lg:p-6 shadow-sm border border-indigo-800 space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-indigo-800/80 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-300">
+              <Moon className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">Sleep & Rest Hours Log</h3>
+                {isSleepDeficit ? (
+                  <span className="text-[10px] font-bold text-amber-300 bg-amber-900/60 border border-amber-500/40 px-2 py-0.5 rounded">
+                    Deficit: {Math.round((7.5 - health.sleepHours) * 10) / 10}h below baseline
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-900/60 border border-emerald-500/40 px-2 py-0.5 rounded">
+                    Optimal Rest ({health.sleepHours} hrs)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-indigo-200">
+                Log how many hours you slept last night so the AI coach can adjust your work capacity and study sprints.
+              </p>
+            </div>
+          </div>
+
+          {/* Current Logged Pill */}
+          <div className="text-right">
+            <div className="text-2xl font-bold font-mono text-white">
+              {health.sleepHours} <span className="text-sm font-normal text-indigo-300">hrs</span>
+            </div>
+            <div className="text-[10px] text-indigo-300">Current Logged Rest</div>
+          </div>
+        </div>
+
+        {/* Input Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          {/* Box 1: Direct Number Input & Stepper */}
+          <div className="bg-indigo-950/60 border border-indigo-800/60 rounded-xl p-4 space-y-3">
+            <label className="block text-xs font-bold uppercase tracking-wider text-indigo-200">
+              Hours Slept Last Night
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleSaveSleep((health.sleepHours || 7) - 0.5)}
+                className="w-9 h-9 rounded-lg bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-base flex items-center justify-center transition-colors border border-indigo-700"
+                title="Minus 30 mins"
+              >
+                -
+              </button>
+              <div className="flex-1 relative">
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="24"
+                  value={sleepInput}
+                  onChange={(e) => setSleepInput(e.target.value)}
+                  onBlur={(e) => handleSaveSleep(parseFloat(e.target.value) || 7)}
+                  className="w-full text-center text-xl font-bold font-mono py-1.5 rounded-lg bg-indigo-900/80 border border-indigo-600 text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+                <span className="absolute right-3 top-2.5 text-xs text-indigo-300 font-medium pointer-events-none">
+                  hrs
+                </span>
+              </div>
+              <button
+                onClick={() => handleSaveSleep((health.sleepHours || 7) + 0.5)}
+                className="w-9 h-9 rounded-lg bg-indigo-900 hover:bg-indigo-800 text-white font-bold text-base flex items-center justify-center transition-colors border border-indigo-700"
+                title="Plus 30 mins"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Quick Preset Buttons */}
+            <div className="flex items-center gap-1.5 pt-1">
+              {[5, 6, 6.5, 7, 7.5, 8, 8.5, 9].map((hrs) => (
+                <button
+                  key={hrs}
+                  onClick={() => handleSaveSleep(hrs)}
+                  className={`flex-1 py-1 rounded text-[11px] font-mono font-medium transition-colors ${
+                    health.sleepHours === hrs
+                      ? 'bg-amber-400 text-stone-950 font-bold shadow-xs'
+                      : 'bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200'
+                  }`}
+                >
+                  {hrs}h
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Box 2: Bedtime & Wake Time auto-calc */}
+          <div className="bg-indigo-950/60 border border-indigo-800/60 rounded-xl p-4 space-y-3">
+            <label className="block text-xs font-bold uppercase tracking-wider text-indigo-200">
+              Bedtime & Wake Clock
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className="text-[10px] text-indigo-300 flex items-center gap-1 mb-1">
+                  <Moon className="w-3 h-3" /> Slept at
+                </span>
+                <input
+                  type="time"
+                  value={bedTime}
+                  onChange={(e) => setBedTime(e.target.value)}
+                  className="w-full px-2 py-1.5 rounded-lg bg-indigo-900/80 border border-indigo-700 text-xs text-white font-mono"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] text-indigo-300 flex items-center gap-1 mb-1">
+                  <Sun className="w-3 h-3" /> Woke up at
+                </span>
+                <input
+                  type="time"
+                  value={wakeTime}
+                  onChange={(e) => setWakeTime(e.target.value)}
+                  className="w-full px-2 py-1.5 rounded-lg bg-indigo-900/80 border border-indigo-700 text-xs text-white font-mono"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleCalculateFromTimes}
+              className="w-full py-1.5 rounded-lg bg-indigo-800 hover:bg-indigo-700 text-indigo-100 text-xs font-semibold transition-colors flex items-center justify-center gap-1"
+            >
+              <span>Auto-Calculate Hours from Clock</span>
+            </button>
+          </div>
+
+          {/* Box 3: Sleep Quality & AI Recommendation */}
+          <div className="bg-indigo-950/60 border border-indigo-800/60 rounded-xl p-4 space-y-2.5 flex flex-col justify-between">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-indigo-200 mb-1.5">
+                Sleep Quality Rating
+              </label>
+              <div className="grid grid-cols-4 gap-1">
+                {(['poor', 'fair', 'good', 'optimal'] as const).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => {
+                      setSleepQuality(q);
+                      handleSaveSleep(health.sleepHours, q);
+                    }}
+                    className={`py-1 rounded text-[10px] font-bold uppercase transition-colors ${
+                      sleepQuality === q
+                        ? 'bg-amber-400 text-stone-950'
+                        : 'bg-indigo-900/60 text-indigo-300 hover:bg-indigo-800'
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-2.5 rounded-lg bg-indigo-900/80 border border-indigo-700/80 text-[11px] text-indigo-200 leading-relaxed">
+              <span className="font-bold text-amber-300">AI Cognitive Impact: </span>
+              {isSleepDeficit
+                ? 'Sleep debt detected. Limit continuous high-demand study to 25m blocks and prioritize a 15m afternoon recharge.'
+                : 'Optimal cellular restoration. Prefrontal cortex ready for complex problem-solving and long-form study.'}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Health Vitals Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Metric 1: Screen Time & Continuous Focus */}
         <div className="rounded-xl bg-white border border-stone-200 p-4 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
@@ -119,7 +319,7 @@ export const HealthGuardian: React.FC<HealthGuardianProps> = ({
               <Eye className="w-4 h-4 text-amber-600" />
               <span>Screen Time</span>
             </span>
-            <span className="text-[10px] text-stone-600 font-medium">Logged Today</span>
+            <span className="text-[10px] text-stone-500 font-medium">Logged Today</span>
           </div>
 
           <div>
@@ -191,43 +391,7 @@ export const HealthGuardian: React.FC<HealthGuardianProps> = ({
           </div>
         </div>
 
-        {/* Metric 3: Sleep Duration */}
-        <div className="rounded-xl bg-white border border-stone-200 p-4 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-              <Moon className="w-4 h-4 text-indigo-600" />
-              <span>Rest & Sleep</span>
-            </span>
-            <span className="text-[10px] text-stone-600">Last Night</span>
-          </div>
-
-          <div>
-            <div className="text-2xl font-bold text-stone-900">
-              {health.sleepHours} hrs
-            </div>
-            <div className="text-xs text-stone-600 mt-0.5">
-              {health.sleepHours >= 7 ? 'Full REM & cellular recharge' : 'Deficit noted by AI Coach'}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 pt-1">
-            {[6, 6.5, 7, 7.5, 8, 8.5].map((hours) => (
-              <button
-                key={hours}
-                onClick={() => onUpdateHealth({ sleepHours: hours })}
-                className={`flex-1 py-1 rounded text-[11px] font-medium transition-colors ${
-                  health.sleepHours === hours
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
-              >
-                {hours}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Metric 4: Energy Level Selector */}
+        {/* Metric 3: Energy Level Selector */}
         <div className="rounded-xl bg-white border border-stone-200 p-4 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
@@ -265,6 +429,10 @@ export const HealthGuardian: React.FC<HealthGuardianProps> = ({
                 {level}
               </button>
             ))}
+          </div>
+
+          <div className="text-[11px] text-stone-500">
+            {health.energyLevel <= 2 ? 'Lighter cognitive load recommended' : 'High alertness for deep work'}
           </div>
         </div>
       </div>

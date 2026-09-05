@@ -152,6 +152,8 @@ export const INITIAL_HEALTH: HealthState = {
 export const INITIAL_FINANCE: FinancialState = {
   currency: '₱', // Philippine Peso from the proposal, with option to toggle
   dailyBudget: 650,
+  weeklyBudget: 4550,
+  monthlyBudget: 19500,
   monthlySavingsTarget: 8000,
   currentSavings: 5400,
   transactions: [

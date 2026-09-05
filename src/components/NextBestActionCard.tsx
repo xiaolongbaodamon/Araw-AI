@@ -51,19 +51,19 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
       case 'urgent':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> High Leverage
+            <AlertTriangle className="w-3 h-3" /> High Priority
           </span>
         );
       case 'rejuvenating':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-            <ShieldCheck className="w-3 h-3" /> Wellness Guardian Protect
+            <ShieldCheck className="w-3 h-3" /> Break
           </span>
         );
       default:
         return (
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-amber-600" /> Optimal Focus Window
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100 text-stone-800 border border-stone-200 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-amber-500" /> Focus
           </span>
         );
     }
@@ -72,21 +72,19 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
   const isWellnessBreak = action.actionType === 'wellness_break' || action.category === 'rest';
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-white border border-stone-200 shadow-sm p-5 sm:p-6 transition-all hover:border-stone-300">
-      {/* Background soft ambient badge indicator */}
+    <div className="relative overflow-hidden rounded-2xl bg-white border border-stone-200 shadow-xs p-5 sm:p-6 transition-all hover:border-stone-300">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-100">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
             {getPillarIcon(action.category)}
           </div>
           <div>
-            <div className="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
-              <span>Araw AI Next-Action Engine</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            </div>
-            <h2 className="text-sm font-medium text-stone-700">
-              Personalized Recommendation for This Moment
+            <h2 className="text-sm font-bold text-stone-900">
+              Recommended Focus
             </h2>
+            <p className="text-xs text-stone-500">
+              Suggested next step based on deadlines and current progress
+            </p>
           </div>
         </div>
 
@@ -95,8 +93,8 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="p-1.5 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200 transition-colors"
-            title="Recalculate with latest user insights"
+            className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 border border-stone-200 transition-colors cursor-pointer"
+            title="Refresh recommendation"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-600' : ''}`} />
           </button>

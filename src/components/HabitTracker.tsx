@@ -14,6 +14,8 @@ import {
   Heart,
   Wallet,
   Sparkles,
+  Timer,
+  Play,
 } from 'lucide-react';
 import { HabitItem, PillarCategory } from '../types';
 
@@ -22,6 +24,7 @@ interface HabitTrackerProps {
   onToggleHabit: (id: string) => void;
   onAddHabit: (habit: Omit<HabitItem, 'id' | 'streak' | 'bestStreak' | 'completedToday' | 'history'>) => void;
   onDeleteHabit: (id: string) => void;
+  onStartTimer?: (title: string, minutes: number) => void;
 }
 
 export const HabitTracker: React.FC<HabitTrackerProps> = ({
@@ -29,14 +32,16 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
   onToggleHabit,
   onAddHabit,
   onDeleteHabit,
+  onStartTimer,
 }) => {
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<'all' | 'morning' | 'afternoon' | 'evening'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // New habit form
+  // New habit form state
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState<PillarCategory>('health');
   const [newTimeOfDay, setNewTimeOfDay] = useState<'morning' | 'afternoon' | 'evening' | 'anytime'>('morning');
+  const [newDurationMinutes, setNewDurationMinutes] = useState<number>(20);
   const [newTargetPerWeek, setNewTargetPerWeek] = useState(7);
 
   // Last 7 days helper
@@ -58,10 +63,12 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
       title: newTitle.trim(),
       category: newCategory,
       timeOfDay: newTimeOfDay,
+      durationMinutes: Number(newDurationMinutes) || 20,
       targetPerWeek: Number(newTargetPerWeek) || 7,
     });
 
     setNewTitle('');
+    setNewDurationMinutes(20);
     setShowAddModal(false);
   };
 
@@ -100,37 +107,39 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
 
   const completedTodayCount = habits.filter((h) => h.completedToday).length;
 
+  // Calculate habit durations
+  const totalPlannedMinutes = habits.reduce((acc, h) => acc + (h.durationMinutes || 15), 0);
+  const totalCompletedMinutes = habits
+    .filter((h) => h.completedToday)
+    .reduce((acc, h) => acc + (h.durationMinutes || 15), 0);
+
   return (
     <div className="space-y-6">
-      {/* Discipline Crisis Header */}
+      {/* Habits Header */}
       <div className="rounded-2xl bg-white border border-stone-200 p-5 shadow-xs">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2 py-0.5 rounded flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 text-amber-500" />
-                <span>Discipline Engine</span>
-              </span>
-              <span className="text-xs text-stone-600">Eliminating the February Goal Drop-Off</span>
-            </div>
-            <h2 className="text-lg font-bold text-stone-900">
-              Personalized Habit Architecture
+            <h2 className="text-base font-bold text-stone-900">
+              Habits & Routines
             </h2>
-            <p className="text-xs text-stone-600 max-w-xl">
-              "Over 80% fail their goals because they lack a system and feedback. Araw AI turns grand ambitions into atomic, daily actions."
+            <p className="text-xs text-stone-500 max-w-xl">
+              Build daily routines and track completion streaks.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200 text-xs font-semibold text-purple-900">
-              Today: {completedTodayCount} of {habits.length} Anchored
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200 text-xs font-semibold text-purple-900 flex items-center gap-1.5">
+              <Timer className="w-3.5 h-3.5 text-purple-600" />
+              <span>
+                {totalCompletedMinutes}m / {totalPlannedMinutes}m today ({completedTodayCount}/{habits.length} habits)
+              </span>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
               className="px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>New Habit</span>
+              <span>+ Add Habit</span>
             </button>
           </div>
         </div>
@@ -186,6 +195,8 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
       {/* Habits Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {filteredHabits.map((habit) => {
+          const duration = habit.durationMinutes || 20;
+
           return (
             <div
               key={habit.id}
@@ -210,11 +221,16 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                   </button>
 
                   <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {getPillarBadge(habit.category)}
                       <span className="text-[11px] text-stone-500 capitalize flex items-center gap-1">
                         {getTimeIcon(habit.timeOfDay)}
                         {habit.timeOfDay}
+                      </span>
+                      {/* Habit Duration Badge */}
+                      <span className="text-[10px] font-bold text-stone-700 bg-stone-100 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-stone-400" />
+                        <span>{duration}m duration</span>
                       </span>
                     </div>
 
@@ -228,8 +244,18 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                   </div>
                 </div>
 
-                {/* Streak Badge */}
+                {/* Right controls: Timer + Streak + Delete */}
                 <div className="flex items-center gap-2 shrink-0">
+                  {onStartTimer && !habit.completedToday && (
+                    <button
+                      onClick={() => onStartTimer(habit.title, duration)}
+                      className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
+                      title={`Start ${duration}m timer for this habit`}
+                    >
+                      <Play className="w-3.5 h-3.5 fill-stone-700" />
+                    </button>
+                  )}
+
                   <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-bold text-amber-900">
                     <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                     <span>{habit.streak}d</span>
@@ -275,14 +301,18 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
         })}
       </div>
 
-      {/* Add Habit Modal */}
+      {/* Add Habit Modal with Duration input */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-stone-200">
-            <h3 className="text-base font-bold text-stone-900 mb-4">
-              Add High-Leverage Habit
+            <h3 className="text-base font-bold text-stone-900 mb-1">
+              Add New Habit
             </h3>
-            <form onSubmit={handleCreateHabit} className="space-y-4 text-xs">
+            <p className="text-xs text-stone-500 mb-4">
+              Specify the habit and how long you commit to performing it so the system can calculate your daily schedule.
+            </p>
+
+            <form onSubmit={handleCreateHabit} className="space-y-3.5 text-xs">
               <div>
                 <label className="block font-semibold text-stone-700 mb-1">
                   Habit Action Name
@@ -290,56 +320,86 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. 15m Morning Walk or Read 20 pages"
+                  placeholder="e.g. 20m Morning Cardio, Read 15 pages, Flashcard Review"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold text-stone-700 mb-1">Pillar Category</label>
-                <select
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  <option value="health">Health & Physical Vigor</option>
-                  <option value="work">Work & Deep Focus</option>
-                  <option value="school">School & Academic Mastery</option>
-                  <option value="finance">Financial Discipline</option>
-                  <option value="mindfulness">Mindfulness & Rest</option>
-                </select>
+              {/* DURATION INPUT (USER REQUEST: "how long they do their habit") */}
+              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-2">
+                <div className="flex items-center justify-between text-amber-900 font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-700" />
+                    <span>How long do you do this habit?</span>
+                  </span>
+                  <span className="font-mono text-sm">{newDurationMinutes} mins</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {[5, 10, 15, 20, 30, 45, 60].map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setNewDurationMinutes(mins)}
+                      className={`flex-1 py-1 rounded text-[11px] font-mono font-medium transition-colors ${
+                        newDurationMinutes === mins
+                          ? 'bg-amber-500 text-stone-950 font-bold shadow-2xs'
+                          : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
+                      }`}
+                    >
+                      {mins}m
+                    </button>
+                  ))}
+                </div>
+
+                <div className="pt-1">
+                  <input
+                    type="number"
+                    min={1}
+                    max={360}
+                    step={5}
+                    value={newDurationMinutes}
+                    onChange={(e) => setNewDurationMinutes(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 rounded-lg bg-white border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                    placeholder="Custom minutes (e.g. 25)"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-stone-700 mb-1">Optimal Time of Day</label>
-                <select
-                  value={newTimeOfDay}
-                  onChange={(e) => setNewTimeOfDay(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  <option value="morning">Morning Routine (Awakening)</option>
-                  <option value="afternoon">Afternoon Focus</option>
-                  <option value="evening">Evening Wind-Down</option>
-                  <option value="anytime">Anytime / Flexible</option>
-                </select>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Pillar</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value as PillarCategory)}
+                    className="w-full px-2.5 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="health">Health & Body</option>
+                    <option value="school">School & Studies</option>
+                    <option value="work">Work & Deep Focus</option>
+                    <option value="finance">Financial Discipline</option>
+                    <option value="mindset">Mindset & Mindfulness</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-stone-700 mb-1">Time of Day</label>
+                  <select
+                    value={newTimeOfDay}
+                    onChange={(e) => setNewTimeOfDay(e.target.value as any)}
+                    className="w-full px-2.5 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="morning">Morning</option>
+                    <option value="afternoon">Afternoon</option>
+                    <option value="evening">Evening</option>
+                    <option value="anytime">Anytime</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-stone-700 mb-1">Weekly Target</label>
-                <select
-                  value={newTargetPerWeek}
-                  onChange={(e) => setNewTargetPerWeek(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  <option value={7}>7 days / week (Daily anchor)</option>
-                  <option value={5}>5 days / week (Weekdays)</option>
-                  <option value={3}>3 days / week</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -349,9 +409,9 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold"
+                  className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold shadow-xs"
                 >
-                  Lock In Habit
+                  Save Habit
                 </button>
               </div>
             </form>

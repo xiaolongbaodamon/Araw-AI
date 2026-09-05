@@ -38,6 +38,8 @@ service cloud.firestore {
         && data.createdAt is string && data.createdAt.size() <= 50
         && (!('dailyWorkTargetMinutes' in data) || (data.dailyWorkTargetMinutes is number && data.dailyWorkTargetMinutes >= 0 && data.dailyWorkTargetMinutes <= 1440))
         && (!('dailyBudget' in data) || (data.dailyBudget is number && data.dailyBudget >= 0 && data.dailyBudget <= 10000000))
+        && (!('weeklyBudget' in data) || (data.weeklyBudget is number && data.weeklyBudget >= 0 && data.weeklyBudget <= 50000000))
+        && (!('monthlyBudget' in data) || (data.monthlyBudget is number && data.monthlyBudget >= 0 && data.monthlyBudget <= 100000000))
         && (!('monthlySavingsTarget' in data) || (data.monthlySavingsTarget is number && data.monthlySavingsTarget >= 0 && data.monthlySavingsTarget <= 100000000))
         && (!('currency' in data) || (data.currency is string && data.currency.size() <= 5))
         && (!('wakeTime' in data) || (data.wakeTime is string && data.wakeTime.size() <= 10))
@@ -51,10 +53,12 @@ service cloud.firestore {
         && data.title is string && data.title.size() > 0 && data.title.size() <= 200
         && data.category in ['work', 'school']
         && data.completed is bool
+        && (!('taskType' in data) || data.taskType in ['work_task', 'schoolwork', 'assignment', 'project', 'exam_prep', 'deliverable', 'other'])
         && (!('priority' in data) || data.priority in ['urgent', 'high', 'medium', 'low'])
         && (!('tag' in data) || (data.tag is string && data.tag.size() <= 50))
         && (!('estimatedMinutes' in data) || (data.estimatedMinutes is number && data.estimatedMinutes >= 0 && data.estimatedMinutes <= 1440))
         && (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 50))
+        && (!('dueTime' in data) || (data.dueTime is string && data.dueTime.size() <= 20))
         && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
     }
 
@@ -65,6 +69,7 @@ service cloud.firestore {
         && data.category in ['health', 'work', 'school', 'finance', 'mindfulness']
         && data.timeOfDay in ['morning', 'afternoon', 'evening', 'anytime']
         && data.completedToday is bool
+        && (!('durationMinutes' in data) || (data.durationMinutes is number && data.durationMinutes >= 0 && data.durationMinutes <= 1440))
         && (!('streak' in data) || (data.streak is number && data.streak >= 0))
         && (!('bestStreak' in data) || (data.bestStreak is number && data.bestStreak >= 0))
         && (!('targetPerWeek' in data) || (data.targetPerWeek is number && data.targetPerWeek >= 1 && data.targetPerWeek <= 7));
@@ -79,6 +84,9 @@ service cloud.firestore {
         && (!('waterGlasses' in data) || (data.waterGlasses is number && data.waterGlasses >= 0))
         && (!('targetWaterGlasses' in data) || (data.targetWaterGlasses is number && data.targetWaterGlasses >= 0))
         && (!('sleepHours' in data) || (data.sleepHours is number && data.sleepHours >= 0 && data.sleepHours <= 24))
+        && (!('sleepQuality' in data) || (data.sleepQuality is string && data.sleepQuality.size() <= 20))
+        && (!('bedTime' in data) || (data.bedTime is string && data.bedTime.size() <= 10))
+        && (!('wakeTime' in data) || (data.wakeTime is string && data.wakeTime.size() <= 10))
         && (!('breaksTakenToday' in data) || (data.breaksTakenToday is number && data.breaksTakenToday >= 0));
     }
 

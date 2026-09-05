@@ -58,10 +58,10 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-stone-900">
-                  Real-time Life Balance Score
+                  Daily Balance Score
                 </h2>
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800">
-                  {balanceIndex.overallScore >= 80 ? 'Optimal Harmony' : 'Protected Mode'}
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-stone-100 text-stone-800">
+                  {balanceIndex.overallScore >= 80 ? 'Balanced' : 'Attention needed'}
                 </span>
               </div>
               <p className="text-xs text-stone-600 mt-0.5 max-w-xl leading-relaxed">
@@ -70,12 +70,11 @@ export const LifeBalanceOverview: React.FC<LifeBalanceOverviewProps> = ({
             </div>
           </div>
 
-          {/* Wellness Guardian Callout (Proposal: "Our AI doesn't just push you to do more. It learns you and protects you.") */}
-          <div className="px-4 py-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-xs text-stone-800 flex items-start gap-2.5 max-w-md">
+          <div className="px-4 py-2.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-800 flex items-start gap-2.5 max-w-md">
             <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-amber-900">Guardian Directive: </span>
-              <span className="text-stone-700">{balanceIndex.protectiveAdvice}</span>
+              <span className="font-semibold text-stone-900">Recommendation: </span>
+              <span className="text-stone-600">{balanceIndex.protectiveAdvice}</span>
             </div>
           </div>
         </div>

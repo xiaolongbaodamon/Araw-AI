@@ -86,30 +86,26 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
       <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-stone-200 my-8 animate-in fade-in zoom-in-95 duration-200">
         {/* Top Badge */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold">
-              <Lock className="w-4 h-4" />
-            </span>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-stone-900 text-white flex items-center justify-center">
+              <Sun className="w-4 h-4 text-amber-400" />
+            </div>
             <div>
-              <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">
-                Setup Required
-              </span>
-              <h2 className="text-lg font-bold text-stone-900">
-                Unlock Your Araw AI Life OS
+              <h2 className="text-base font-bold text-stone-900">
+                Set Up Your Profile
               </h2>
+              <p className="text-xs text-stone-500">
+                Configure your daily targets and preferences.
+              </p>
             </div>
           </div>
           <button
             onClick={onSignOut}
-            className="text-xs text-stone-600 hover:text-stone-900 underline"
+            className="text-xs text-stone-500 hover:text-stone-900 cursor-pointer"
           >
-            Switch Account
+            Sign out
           </button>
         </div>
-
-        <p className="text-xs text-stone-600 leading-relaxed mb-6">
-          To build your personalized, real-time life tracking experience and unlock the dashboard, Araw AI needs to learn your core rhythm across <strong>work, school, health, and financials</strong>. No mock examples—this will be your real life data.
-        </p>
 
         {error && (
           <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
@@ -276,10 +272,9 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
+              className="w-full py-3 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>{isSubmitting ? 'Configuring Your Life OS...' : 'Save & Unlock Araw AI Features'}</span>
+              <span>{isSubmitting ? 'Saving Profile...' : 'Save & Continue'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

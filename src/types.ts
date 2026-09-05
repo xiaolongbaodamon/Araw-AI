@@ -1,13 +1,16 @@
 export type PillarCategory = 'work' | 'school' | 'health' | 'finance' | 'mindfulness';
 
+export type TaskType = 'work_task' | 'schoolwork' | 'assignment' | 'project' | 'exam_prep' | 'deliverable' | 'other';
+
 export interface TaskItem {
   id: string;
   title: string;
   category: 'work' | 'school';
+  taskType?: TaskType;
   tag: string; // e.g., "CS 101", "Client Sprint", "Midterm Essay"
   priority: 'low' | 'medium' | 'high' | 'urgent';
   dueDate: string; // YYYY-MM-DD
-  dueTime?: string;
+  dueTime?: string; // HH:mm
   estimatedMinutes: number;
   completed: boolean;
   completedAt?: string;
@@ -20,6 +23,7 @@ export interface HabitItem {
   title: string;
   category: PillarCategory;
   timeOfDay: 'morning' | 'afternoon' | 'evening' | 'anytime';
+  durationMinutes?: number; // How long user does their habit (e.g. 15, 30, 45, 60 mins)
   streak: number;
   bestStreak: number;
   completedToday: boolean;
@@ -30,7 +34,10 @@ export interface HabitItem {
 export interface HealthState {
   screenTimeMinutes: number;
   continuousWorkMinutes: number;
-  sleepHours: number;
+  sleepHours: number; // Hours slept
+  sleepQuality?: 'poor' | 'fair' | 'good' | 'optimal';
+  bedTime?: string;
+  wakeTime?: string;
   waterGlasses: number;
   targetWaterGlasses: number;
   energyLevel: 1 | 2 | 3 | 4 | 5; // 1 lowest, 5 peak
@@ -52,9 +59,72 @@ export interface FinancialItem {
 export interface FinancialState {
   currency: string;
   dailyBudget: number;
+  weeklyBudget: number;
+  monthlyBudget: number;
   monthlySavingsTarget: number;
   currentSavings: number;
   transactions: FinancialItem[];
+}
+
+export interface SystemDetectionRecommendation {
+  detectedAt: string;
+  detections: {
+    workSchool: {
+      totalTasks: number;
+      pendingTasks: number;
+      schoolworkCount: number;
+      workCount: number;
+      imminentDeadlines: {
+        title: string;
+        dueDate: string;
+        dueTime?: string;
+        hoursUntilDue: number;
+        isUrgent: boolean;
+        category: 'work' | 'school';
+        taskType?: string;
+      }[];
+    };
+    healthSleep: {
+      sleepHours: number;
+      isDeficit: boolean;
+      deficitAmount: number;
+      screenTimeMinutes: number;
+      continuousWorkMinutes: number;
+      energyLevel: number;
+      burnoutRisk: 'low' | 'moderate' | 'high';
+    };
+    financials: {
+      dailySpend: number;
+      dailyBudget: number;
+      dailyRemaining: number;
+      weeklySpend: number;
+      weeklyBudget: number;
+      weeklyRemaining: number;
+      monthlySpend: number;
+      monthlyBudget: number;
+      monthlyRemaining: number;
+      isOverDailyBudget: boolean;
+      isOverWeeklyBudget: boolean;
+    };
+    habits: {
+      totalHabits: number;
+      completedTodayCount: number;
+      pendingHabitsCount: number;
+      totalPlannedDurationMinutes: number;
+      pendingDurationMinutes: number;
+      pendingHabits: { title: string; durationMinutes?: number; category: PillarCategory }[];
+    };
+  };
+  recommendations: {
+    id: string;
+    priority: 'urgent' | 'high' | 'medium';
+    pillar: PillarCategory | 'balance';
+    headline: string;
+    detectedReason: string;
+    actionableAdvice: string;
+    suggestedActionLabel?: string;
+    estimatedMinutes?: number;
+  }[];
 }
 
 export interface AiInsight {
@@ -94,6 +164,8 @@ export interface UserProfile {
   role: 'student' | 'professional' | 'freelancer' | 'other';
   dailyWorkTargetMinutes: number;
   dailyBudget: number;
+  weeklyBudget?: number;
+  monthlyBudget?: number;
   monthlySavingsTarget: number;
   currency: string;
   wakeTime: string;

@@ -93,10 +93,10 @@ export const GoalDecomposeModal: React.FC<GoalDecomposeModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-stone-900">
-                AI Goal Deconstruction Engine
+                Break Down Goal
               </h3>
               <p className="text-xs text-stone-500">
-                "It turns big, intimidating goals into small daily actions."
+                Split larger projects into smaller daily steps.
               </p>
             </div>
           </div>
@@ -114,12 +114,12 @@ export const GoalDecomposeModal: React.FC<GoalDecomposeModalProps> = ({
           <form onSubmit={handleDecompose} className="space-y-3">
             <div>
               <label className="block font-semibold text-stone-700 mb-1">
-                What big goal or project are you procrastinating on?
+                Goal or Project Title
               </label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Write 10-page Sociology Research Paper or Build Q3 Financial Model"
+                placeholder="e.g. Sociology Research Paper or Q3 Financial Model"
                 value={goalTitle}
                 onChange={(e) => setGoalTitle(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"

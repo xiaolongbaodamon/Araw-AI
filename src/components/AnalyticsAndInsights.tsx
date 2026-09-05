@@ -105,28 +105,21 @@ export const AnalyticsAndInsights: React.FC<AnalyticsAndInsightsProps> = ({
       <div className="rounded-2xl bg-white border border-stone-200 p-5 shadow-xs">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>AI Pattern Detection & Time Optimizer</span>
-              </span>
-              <span className="text-xs text-stone-600">Free Tier Gemini Intelligence</span>
-            </div>
-            <h2 className="text-lg font-bold text-stone-900">
-              Real-Time Life Analytics & Actionable Advice
+            <h2 className="text-base font-bold text-stone-900">
+              Analytics & Summary
             </h2>
-            <p className="text-xs text-stone-600 max-w-xl">
-              Araw AI analyzes your tasks, habit streaks, continuous screen exposure, and expenses to extract actionable daily prescriptions.
+            <p className="text-xs text-stone-500 max-w-xl">
+              Performance metrics across your tasks, habits, health, and finances.
             </p>
           </div>
 
           <button
             onClick={handleRunDiagnosis}
             disabled={isDiagnosing}
-            className="px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs flex items-center gap-2 shadow-xs transition-all disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 text-amber-400 ${isDiagnosing ? 'animate-spin' : ''}`} />
-            <span>{isDiagnosing ? 'Analyzing Life Patterns...' : 'Run Live AI Diagnosis'}</span>
+            <span>{isDiagnosing ? 'Analyzing...' : 'Generate Insights'}</span>
           </button>
         </div>
       </div>

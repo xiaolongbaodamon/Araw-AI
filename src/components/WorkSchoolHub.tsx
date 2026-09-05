@@ -14,8 +14,12 @@ import {
   ChevronUp,
   Tag,
   Timer,
+  AlertCircle,
+  Calendar,
+  BookOpen,
+  Filter,
 } from 'lucide-react';
-import { TaskItem } from '../types';
+import { TaskItem, TaskType } from '../types';
 
 interface WorkSchoolHubProps {
   tasks: TaskItem[];
@@ -47,18 +51,20 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
   onPauseFocus,
   onResetFocus,
 }) => {
-  const [filter, setFilter] = useState<'all' | 'work' | 'school' | 'urgent'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'school' | 'work' | 'deadlines'>('all');
   const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>({});
   const [isDecomposingId, setIsDecomposingId] = useState<string | null>(null);
 
   // New task form state
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newCategory, setNewCategory] = useState<'work' | 'school'>('work');
+  const [newCategory, setNewCategory] = useState<'work' | 'school'>('school');
+  const [newTaskType, setNewTaskType] = useState<TaskType>('assignment');
   const [newTag, setNewTag] = useState('');
-  const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+  const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('high');
   const [newDueDate, setNewDueDate] = useState('2026-09-05');
-  const [newEstimatedMinutes, setNewEstimatedMinutes] = useState(30);
+  const [newDueTime, setNewDueTime] = useState('23:59');
+  const [newEstimatedMinutes, setNewEstimatedMinutes] = useState(45);
 
   const toggleExpand = (id: string) => {
     setExpandedTasks((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -81,9 +87,11 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
     onAddTask({
       title: newTitle.trim(),
       category: newCategory,
+      taskType: newTaskType,
       tag: newTag.trim() || (newCategory === 'work' ? 'Work Project' : 'Course Work'),
       priority: newPriority,
       dueDate: newDueDate,
+      dueTime: newDueTime,
       estimatedMinutes: Number(newEstimatedMinutes) || 30,
       completed: false,
       subtasks: [],
@@ -94,12 +102,64 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
     setShowAddModal(false);
   };
 
+  const openAddModalWithDefaults = (category: 'work' | 'school', type?: TaskType) => {
+    setNewCategory(category);
+    if (type) {
+      setNewTaskType(type);
+    } else {
+      setNewTaskType(category === 'school' ? 'assignment' : 'work_task');
+    }
+    setShowAddModal(true);
+  };
+
+  // Helper for deadline calculations
+  const now = new Date();
+  const getDeadlineStatus = (dueDateStr: string, dueTimeStr?: string) => {
+    const fullDateStr = dueTimeStr ? `${dueDateStr}T${dueTimeStr}:00` : `${dueDateStr}T23:59:00`;
+    const targetDate = new Date(fullDateStr);
+    if (isNaN(targetDate.getTime())) {
+      return { text: `Due ${dueDateStr}`, urgency: 'normal', hoursLeft: 48 };
+    }
+    const diffMs = targetDate.getTime() - now.getTime();
+    const hoursLeft = Math.round(diffMs / (1000 * 60 * 60));
+
+    if (hoursLeft < 0) {
+      return { text: `Overdue by ${Math.abs(hoursLeft)}h`, urgency: 'overdue', hoursLeft };
+    } else if (hoursLeft <= 4) {
+      return { text: `Due in ${hoursLeft} hrs (${dueTimeStr || 'Today'})`, urgency: 'critical', hoursLeft };
+    } else if (hoursLeft <= 24) {
+      return { text: `Due Today at ${dueTimeStr || 'EOD'}`, urgency: 'today', hoursLeft };
+    } else if (hoursLeft <= 48) {
+      return { text: `Due Tomorrow`, urgency: 'tomorrow', hoursLeft };
+    } else {
+      const days = Math.round(hoursLeft / 24);
+      return { text: `Due in ${days} days (${dueDateStr})`, urgency: 'upcoming', hoursLeft };
+    }
+  };
+
+  // Filtering
   const filteredTasks = tasks.filter((t) => {
-    if (filter === 'work') return t.category === 'work';
-    if (filter === 'school') return t.category === 'school';
-    if (filter === 'urgent') return t.priority === 'urgent' || t.priority === 'high';
+    if (activeTab === 'school') return t.category === 'school';
+    if (activeTab === 'work') return t.category === 'work';
     return true;
   });
+
+  // For Deadlines Timeline view, sort by hoursLeft ascending
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    if (activeTab === 'deadlines') {
+      const statusA = getDeadlineStatus(a.dueDate, a.dueTime);
+      const statusB = getDeadlineStatus(b.dueDate, b.dueTime);
+      return statusA.hoursLeft - statusB.hoursLeft;
+    }
+    return 0;
+  });
+
+  // Imminent deadline badge at top
+  const pendingTasks = tasks.filter((t) => !t.completed);
+  const imminentTasks = pendingTasks
+    .map((t) => ({ task: t, status: getDeadlineStatus(t.dueDate, t.dueTime) }))
+    .sort((a, b) => a.status.hoursLeft - b.status.hoursLeft);
+  const nextImminent = imminentTasks[0];
 
   const formatTimer = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -107,24 +167,42 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const schoolworkCount = tasks.filter((t) => t.category === 'school').length;
+  const workCount = tasks.filter((t) => t.category === 'work').length;
+  const pendingCount = tasks.filter((t) => !t.completed).length;
+
   return (
     <div className="space-y-6">
-      {/* Top Banner: Deep Work Timer & Philosophy */}
+      {/* Top Banner: Deep Work Timer & Imminent Deadline Spotlight */}
       <div className="rounded-2xl bg-white border border-stone-200 p-5 shadow-xs">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                Unified Flow Engine
-              </span>
-              <span className="text-xs text-stone-600">Solving Context-Switching & App Clutter</span>
-            </div>
-            <h2 className="text-lg font-bold text-stone-900">
-              Work Deadlines & Academic Hub
+          <div className="space-y-1.5 flex-1">
+            <h2 className="text-base font-bold text-stone-900">
+              Tasks & Deadlines
             </h2>
-            <p className="text-xs text-stone-600 max-w-xl">
-              Eliminate app jumping. All assignments, client deliverables, and study sprints stay in one calm, unified source of truth.
+            <p className="text-xs text-stone-500 max-w-xl">
+              Manage work deliverables, school assignments, and focus sprints.
             </p>
+
+            {/* Imminent Deadline Pill */}
+            {nextImminent && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[11px] font-medium text-stone-800 bg-stone-100 border border-stone-200 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                  <span>
+                    Upcoming: <strong>{nextImminent.task.title}</strong> ({nextImminent.status.text})
+                  </span>
+                </span>
+                {!nextImminent.task.completed && (
+                  <button
+                    onClick={() => onStartFocus(nextImminent.task.title, nextImminent.task.estimatedMinutes)}
+                    className="text-[11px] font-semibold text-stone-700 hover:text-stone-900 underline flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <span>Start timer</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Integrated Focus Sprint Timer */}
@@ -132,13 +210,13 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
             <div className="text-center sm:text-left">
               <div className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-1">
                 <Timer className="w-3.5 h-3.5" />
-                <span>Deep Work Focus Sprint</span>
+                <span>Focus Timer</span>
               </div>
               <div className="text-3xl font-mono font-bold tracking-tight mt-0.5">
                 {formatTimer(focusTimerSeconds)}
               </div>
               <div className="text-[10px] text-stone-400 truncate max-w-[200px]">
-                {activeFocusTaskTitle || 'Select task to start'}
+                {activeFocusTaskTitle || 'Ready to focus'}
               </div>
             </div>
 
@@ -154,7 +232,7 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                 <button
                   onClick={() =>
                     onStartFocus(
-                      activeFocusTaskTitle || tasks.find((t) => !t.completed)?.title || 'General Focus',
+                      activeFocusTaskTitle || nextImminent?.task.title || 'General Deep Focus',
                       25
                     )
                   }
@@ -175,65 +253,101 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
         </div>
       </div>
 
-      {/* Task Filters and New Task Button */}
+      {/* Tabs & Dedicated Add Actions */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 bg-stone-200/70 p-1 rounded-xl text-xs font-medium">
+        {/* Pillar Tabs */}
+        <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl text-xs font-medium">
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => setActiveTab('all')}
             className={`px-3 py-1.5 rounded-lg transition-colors ${
-              filter === 'all' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-600 hover:text-stone-900'
+              activeTab === 'all'
+                ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             All Items ({tasks.length})
           </button>
           <button
-            onClick={() => setFilter('work')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors ${
-              filter === 'work' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-600 hover:text-stone-900'
+            onClick={() => setActiveTab('school')}
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${
+              activeTab === 'school'
+                ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <Briefcase className="w-3 h-3 text-blue-600" />
-            Work ({tasks.filter((t) => t.category === 'work').length})
+            <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Schoolworks ({schoolworkCount})</span>
           </button>
           <button
-            onClick={() => setFilter('school')}
-            className={`px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors ${
-              filter === 'school' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-600 hover:text-stone-900'
+            onClick={() => setActiveTab('work')}
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${
+              activeTab === 'work'
+                ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <GraduationCap className="w-3 h-3 text-indigo-600" />
-            School ({tasks.filter((t) => t.category === 'school').length})
+            <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+            <span>Work To-Dos ({workCount})</span>
           </button>
           <button
-            onClick={() => setFilter('urgent')}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
-              filter === 'urgent' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-600 hover:text-stone-900'
+            onClick={() => setActiveTab('deadlines')}
+            className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${
+              activeTab === 'deadlines'
+                ? 'bg-white text-amber-900 shadow-2xs font-bold'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            Urgent ({tasks.filter((t) => t.priority === 'urgent' || t.priority === 'high').length})
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
+            <span>Deadlines Radar</span>
           </button>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Task / Assignment</span>
-        </button>
+        {/* Quick Add Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => openAddModalWithDefaults('school')}
+            className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+          >
+            <GraduationCap className="w-3.5 h-3.5 text-indigo-700" />
+            <span>+ Add Schoolwork</span>
+          </button>
+          <button
+            onClick={() => openAddModalWithDefaults('work')}
+            className="px-3.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Add Work Task</span>
+          </button>
+        </div>
       </div>
 
-      {/* Task List */}
+      {/* Task List / Deadlines Grid */}
       <div className="space-y-3">
-        {filteredTasks.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-stone-300 p-8 text-center text-stone-500 text-xs">
-            No tasks found matching current filter. Add one above!
+        {sortedTasks.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-stone-300 p-8 text-center text-stone-500 text-xs space-y-2">
+            <div>No items currently listed under this view.</div>
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={() => openAddModalWithDefaults('school')}
+                className="text-indigo-600 font-semibold underline"
+              >
+                Add an assignment or exam
+              </button>
+              <span>•</span>
+              <button
+                onClick={() => openAddModalWithDefaults('work')}
+                className="text-blue-600 font-semibold underline"
+              >
+                Add a work task
+              </button>
+            </div>
           </div>
         ) : (
-          filteredTasks.map((task) => {
+          sortedTasks.map((task) => {
             const isExpanded = expandedTasks[task.id];
             const completedSubtasks = task.subtasks?.filter((s) => s.completed).length || 0;
             const totalSubtasks = task.subtasks?.length || 0;
+            const deadlineInfo = getDeadlineStatus(task.dueDate, task.dueTime);
 
             return (
               <div
@@ -241,6 +355,8 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                 className={`rounded-xl border transition-all ${
                   task.completed
                     ? 'bg-stone-50/70 border-stone-200 opacity-60'
+                    : deadlineInfo.urgency === 'critical' || deadlineInfo.urgency === 'overdue'
+                    ? 'bg-amber-50/40 border-amber-300 shadow-xs'
                     : 'bg-white border-stone-200 shadow-2xs hover:border-stone-300'
                 }`}
               >
@@ -249,6 +365,7 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                     <button
                       onClick={() => onToggleTask(task.id)}
                       className="mt-0.5 text-stone-400 hover:text-emerald-600 transition-colors"
+                      title={task.completed ? 'Mark incomplete' : 'Mark completed'}
                     >
                       {task.completed ? (
                         <CheckCircle2 className="w-5 h-5 text-emerald-600 fill-emerald-100" />
@@ -257,23 +374,31 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                       )}
                     </button>
 
-                    <div className="space-y-1 flex-1">
+                    <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
+                        {/* Category badge */}
                         <span
-                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                            task.category === 'work'
-                              ? 'bg-blue-50 text-blue-800'
-                              : 'bg-indigo-50 text-indigo-800'
+                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded flex items-center gap-1 ${
+                            task.category === 'school'
+                              ? 'bg-indigo-50 text-indigo-800 border border-indigo-200'
+                              : 'bg-blue-50 text-blue-800 border border-blue-200'
                           }`}
                         >
-                          {task.category}
+                          {task.category === 'school' ? (
+                            <GraduationCap className="w-3 h-3" />
+                          ) : (
+                            <Briefcase className="w-3 h-3" />
+                          )}
+                          {task.category === 'school' ? 'Schoolwork' : 'Work'}
                         </span>
 
-                        <span className="text-[11px] text-stone-600 flex items-center gap-1 font-medium">
+                        {/* Tag/Course */}
+                        <span className="text-[11px] text-stone-600 flex items-center gap-1 font-medium bg-stone-100 px-2 py-0.5 rounded">
                           <Tag className="w-3 h-3 text-stone-400" />
                           {task.tag}
                         </span>
 
+                        {/* Priority */}
                         <span
                           className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
                             task.priority === 'urgent'
@@ -286,9 +411,18 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                           {task.priority}
                         </span>
 
-                        <span className="text-[11px] text-stone-600 flex items-center gap-1 ml-auto">
-                          <Clock className="w-3 h-3 text-stone-400" />
-                          {task.estimatedMinutes}m • Due {task.dueDate} {task.dueTime ? `@ ${task.dueTime}` : ''}
+                        {/* Deadline badge */}
+                        <span
+                          className={`text-[11px] font-semibold px-2 py-0.5 rounded flex items-center gap-1 ml-auto ${
+                            deadlineInfo.urgency === 'critical'
+                              ? 'bg-rose-100 text-rose-900 border border-rose-200 font-bold animate-pulse'
+                              : deadlineInfo.urgency === 'today'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                              : 'bg-stone-100 text-stone-700'
+                          }`}
+                        >
+                          <Clock className="w-3 h-3 text-stone-500" />
+                          <span>{deadlineInfo.text}</span>
                         </span>
                       </div>
 
@@ -299,6 +433,11 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                       >
                         {task.title}
                       </h4>
+
+                      <div className="flex items-center gap-3 text-xs text-stone-500">
+                        <span>Est: {task.estimatedMinutes}m</span>
+                        {task.dueTime && <span>• Deadline Time: {task.dueTime}</span>}
+                      </div>
                     </div>
                   </div>
 
@@ -307,10 +446,10 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                     {!task.completed && (
                       <button
                         onClick={() => onStartFocus(task.title, task.estimatedMinutes)}
-                        className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors"
-                        title="Start focus timer on this item"
+                        className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors"
+                        title="Start focus sprint on this item"
                       >
-                        <Play className="w-4 h-4 text-stone-700" />
+                        <Play className="w-4 h-4 fill-emerald-600" />
                       </button>
                     )}
 
@@ -319,10 +458,10 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                       onClick={() => handleDecompose(task.id, task.title, task.category)}
                       disabled={isDecomposingId === task.id}
                       className="px-2 py-1 rounded-lg text-[11px] font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 flex items-center gap-1 transition-colors"
-                      title="Turn big assignment into small daily actions"
+                      title="Turn big assignment or project into small sub-tasks"
                     >
                       <Sparkles className={`w-3 h-3 text-amber-600 ${isDecomposingId === task.id ? 'animate-spin' : ''}`} />
-                      <span className="hidden sm:inline">AI Breakdown</span>
+                      <span className="hidden sm:inline">Breakdown</span>
                     </button>
 
                     {/* Subtasks dropdown toggle */}
@@ -383,92 +522,175 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
         )}
       </div>
 
-      {/* Add Task Modal */}
+      {/* Add Task / Schoolwork Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-stone-200">
-            <h3 className="text-base font-bold text-stone-900 mb-4">
-              Add New Work Deadline or Assignment
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-stone-200">
+            <h3 className="text-base font-bold text-stone-900 mb-1">
+              Add Work Deadline or Schoolwork
             </h3>
+            <p className="text-xs text-stone-500 mb-4">
+              Enter what you need to do, the course or project, and the exact deadline so the system can calculate your schedule and insights.
+            </p>
+
             <form onSubmit={handleCreateTask} className="space-y-4 text-xs">
+              {/* Pillar Category Switcher */}
+              <div className="grid grid-cols-2 gap-2 p-1 bg-stone-100 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewCategory('school');
+                    setNewTaskType('assignment');
+                  }}
+                  className={`py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors ${
+                    newCategory === 'school'
+                      ? 'bg-white text-indigo-900 shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4 text-indigo-600" />
+                  <span>Schoolwork</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewCategory('work');
+                    setNewTaskType('work_task');
+                  }}
+                  className={`py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors ${
+                    newCategory === 'work'
+                      ? 'bg-white text-blue-900 shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4 text-blue-600" />
+                  <span>Work To-Do</span>
+                </button>
+              </div>
+
+              {/* Title */}
               <div>
                 <label className="block font-semibold text-stone-700 mb-1">
-                  Task or Assignment Title
+                  {newCategory === 'school' ? 'Schoolwork Title (Assignment / Exam)' : 'Work Task / Deliverable Title'}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Physics Midterm Lab Report or Client Pitch Deck"
+                  placeholder={
+                    newCategory === 'school'
+                      ? 'e.g. Calculus Problem Set #4, Biology Lab Report, History Midterm Study'
+                      : 'e.g. Client Pitch Deck, Q3 Roadmap Review, Code Refactor Sprint'
+                  }
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
+              {/* Specific Task Type & Course / Tag */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Pillar Category</label>
+                  <label className="block font-semibold text-stone-700 mb-1">
+                    {newCategory === 'school' ? 'Schoolwork Type' : 'Work Type'}
+                  </label>
                   <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as 'work' | 'school')}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    value={newTaskType}
+                    onChange={(e) => setNewTaskType(e.target.value as TaskType)}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="work">Work Project</option>
-                    <option value="school">School / University</option>
+                    {newCategory === 'school' ? (
+                      <>
+                        <option value="assignment">Homework / Assignment</option>
+                        <option value="project">Course Project</option>
+                        <option value="exam_prep">Midterm / Final Exam Prep</option>
+                        <option value="deliverable">Research Paper / Essay</option>
+                        <option value="other">Reading & Lecture Review</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="work_task">General Work Deliverable</option>
+                        <option value="project">Project Milestone</option>
+                        <option value="deliverable">Client Deliverable</option>
+                        <option value="other">Meeting Prep & Operations</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Course / Client Tag</label>
+                  <label className="block font-semibold text-stone-700 mb-1">
+                    {newCategory === 'school' ? 'Course / Subject Tag' : 'Client / Project Tag'}
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. BIO 201, Client Sprint"
+                    placeholder={newCategory === 'school' ? 'e.g. MATH 201, BIO 102' : 'e.g. Client Acme, Product Sprint'}
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              {/* Deadlines: Date and Time */}
+              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-2">
+                <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                  <Clock className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Exact Deadline Requirement</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-stone-700 mb-1">Deadline Date</label>
+                    <input
+                      type="date"
+                      required
+                      value={newDueDate}
+                      onChange={(e) => setNewDueDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-stone-700 mb-1">Deadline Time</label>
+                    <input
+                      type="time"
+                      value={newDueTime}
+                      onChange={(e) => setNewDueTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Priority & Est. Duration */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Priority</label>
+                  <label className="block font-semibold text-stone-700 mb-1">Priority / Urgency</label>
                   <select
                     value={newPriority}
                     onChange={(e) => setNewPriority(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
+                    <option value="urgent">Urgent (Immediate)</option>
                     <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Due Date</label>
-                  <input
-                    type="date"
-                    value={newDueDate}
-                    onChange={(e) => setNewDueDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-stone-700 mb-1">Est. Minutes</label>
+                  <label className="block font-semibold text-stone-700 mb-1">Est. Focus Minutes</label>
                   <input
                     type="number"
                     min={5}
-                    max={360}
+                    max={480}
+                    step={5}
                     value={newEstimatedMinutes}
                     onChange={(e) => setNewEstimatedMinutes(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-2 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -478,9 +700,9 @@ export const WorkSchoolHub: React.FC<WorkSchoolHubProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold"
+                  className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-semibold shadow-xs"
                 >
-                  Save to Schedule
+                  Save Deadline Item
                 </button>
               </div>
             </form>

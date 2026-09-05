@@ -31,10 +31,13 @@ import { HealthGuardian } from './components/HealthGuardian';
 import { FinancialTracker } from './components/FinancialTracker';
 import { HabitTracker } from './components/HabitTracker';
 import { AnalyticsAndInsights } from './components/AnalyticsAndInsights';
+import { SystemDetectionBanner } from './components/SystemDetectionBanner';
+import { calculateSystemDetectionsAndRecommendations } from './services/recommendationEngine';
 import { AiCoachDrawer } from './components/AiCoachDrawer';
 import { GoalDecomposeModal } from './components/GoalDecomposeModal';
 import { OnboardingModal } from './components/OnboardingModal';
 import { FirebaseRulesModal } from './components/FirebaseRulesModal';
+import { AuthScreen } from './components/AuthScreen';
 import {
   auth,
   db,
@@ -69,6 +72,9 @@ import {
   Shield,
   LogIn,
   UserCheck,
+  ShieldCheck,
+  ArrowRight,
+  Sun,
 } from 'lucide-react';
 
 export default function App() {
@@ -334,6 +340,11 @@ export default function App() {
     };
   }, [tasks, habits, health, finances]);
 
+  // Live Cross-Pillar System Telemetry & Recommendation Engine
+  const systemDetection = useMemo(() => {
+    return calculateSystemDetectionsAndRecommendations(tasks, habits, health, finances, userProfile);
+  }, [tasks, habits, health, finances, userProfile]);
+
   // Auth Operations
   const handleGoogleSignIn = async () => {
     try {
@@ -510,6 +521,8 @@ export default function App() {
     const item: TaskItem = {
       ...newTask,
       id: taskId,
+      taskType: newTask.taskType || (newTask.category === 'school' ? 'assignment' : 'work_task'),
+      dueTime: newTask.dueTime || '23:59',
     };
     setTasks((prev) => [item, ...prev]);
     showToast(`Added: ${item.title}`);
@@ -521,11 +534,13 @@ export default function App() {
           userId: currentUser.uid,
           title: item.title,
           category: item.category,
+          taskType: item.taskType,
           priority: item.priority || 'medium',
           tag: item.tag || 'General',
           estimatedMinutes: item.estimatedMinutes || 30,
           completed: false,
           dueDate: item.dueDate || '2026-09-05',
+          dueTime: item.dueTime,
           createdAt: new Date().toISOString(),
         });
       } catch (err) {
@@ -616,13 +631,14 @@ export default function App() {
     const item: HabitItem = {
       ...newHabit,
       id: habitId,
+      durationMinutes: newHabit.durationMinutes || 20,
       streak: 1,
       bestStreak: 1,
       completedToday: false,
       history: {},
     };
     setHabits((prev) => [...prev, item]);
-    showToast(`Locked in habit: ${item.title}`);
+    showToast(`Locked in habit: ${item.title} (${item.durationMinutes}m)`);
 
     if (currentUser) {
       const path = `users/${currentUser.uid}/habits/${habitId}`;
@@ -632,6 +648,7 @@ export default function App() {
           title: item.title,
           category: item.category,
           timeOfDay: item.timeOfDay,
+          durationMinutes: item.durationMinutes,
           streak: 1,
           bestStreak: 1,
           completedToday: false,
@@ -669,6 +686,9 @@ export default function App() {
             continuousWorkMinutes: updated.continuousWorkMinutes,
             waterGlasses: updated.waterGlasses,
             sleepHours: updated.sleepHours,
+            sleepQuality: updated.sleepQuality || 'good',
+            bedTime: updated.bedTime || '23:00',
+            wakeTime: updated.wakeTime || '06:30',
             breaksTakenToday: updated.breaksTakenToday,
           },
           { merge: true }
@@ -693,7 +713,7 @@ export default function App() {
     const item: FinancialItem = {
       ...newTr,
       id: trId,
-      date: '2026-09-05',
+      date: newTr.date || '2026-09-05',
     };
 
     setFinances((prev) => ({
@@ -713,7 +733,7 @@ export default function App() {
           type: item.type,
           category: item.category,
           note: item.note || '',
-          date: '2026-09-05',
+          date: item.date || '2026-09-05',
         });
       } catch (err) {
         handleFirestoreError(err, OperationType.CREATE, path);
@@ -737,9 +757,22 @@ export default function App() {
     }
   };
 
-  const handleUpdateBudget = async (dailyBudget: number, monthlySavingsTarget: number) => {
-    setFinances((prev) => ({ ...prev, dailyBudget, monthlySavingsTarget }));
-    showToast('Updated financial guardrails.');
+  const handleUpdateBudget = async (
+    dailyBudget: number,
+    monthlySavingsTarget: number,
+    weeklyBudget?: number,
+    monthlyBudget?: number
+  ) => {
+    const wb = weeklyBudget || dailyBudget * 7;
+    const mb = monthlyBudget || wb * 4;
+    setFinances((prev) => ({
+      ...prev,
+      dailyBudget,
+      monthlySavingsTarget,
+      weeklyBudget: wb,
+      monthlyBudget: mb,
+    }));
+    showToast('Updated daily, weekly, and monthly financial guardrails.');
 
     if (currentUser) {
       const path = `users/${currentUser.uid}`;
@@ -747,6 +780,8 @@ export default function App() {
         await updateDoc(doc(db, 'users', currentUser.uid), {
           dailyBudget,
           monthlySavingsTarget,
+          weeklyBudget: wb,
+          monthlyBudget: mb,
         });
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, path);
@@ -900,12 +935,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Header with Firebase Auth & Rules triggers */}
+      {/* Header with Firebase Auth */}
       <Header
         balanceIndex={balanceIndex}
         onOpenCoach={() => setIsCoachOpen(true)}
         onOpenDecomposer={() => setIsDecomposerOpen(true)}
-        onOpenRules={() => setShowRulesModal(true)}
         onSelectPreset={handleSelectPreset}
         onResetData={handleResetData}
         activeFocusTaskTitle={activeFocusTaskTitle}
@@ -921,62 +955,53 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1 space-y-6">
-        {/* If user is not authenticated or hasn't filled info: Locked Gate Banner */}
-        {isFeaturesLocked ? (
-          <div className="rounded-3xl bg-white border border-stone-200 p-8 sm:p-12 text-center shadow-xs space-y-6 max-w-2xl mx-auto my-12">
-            <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-900 flex items-center justify-center mx-auto shadow-2xs">
-              <Lock className="w-8 h-8 text-amber-600" />
+        {/* State 1: Unauthenticated -> High-End Modern Auth Screen */}
+        {!currentUser ? (
+          <AuthScreen
+            onSuccess={() => {
+              showToast('Authentication successful. Welcome to Araw AI!');
+            }}
+            onSelectPreset={handleSelectPreset}
+          />
+        ) : !userProfile?.onboardingCompleted ? (
+          /* State 2: Authenticated but Parameters Needed -> Clean Setup Prompt */
+          <div className="rounded-3xl bg-white border border-stone-200 p-8 sm:p-12 text-center shadow-lg space-y-6 max-w-xl mx-auto my-12 animate-in fade-in zoom-in-95">
+            <div className="w-16 h-16 rounded-2xl bg-stone-900 text-white flex items-center justify-center mx-auto shadow-md">
+              <Sun className="w-8 h-8 text-amber-400" />
             </div>
 
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Connected to arawai-5bf06</span>
-              </div>
               <h2 className="text-2xl font-bold tracking-tight text-stone-900">
-                Sign In to Unlock Araw AI Daily OS
+                Welcome to Araw
               </h2>
               <p className="text-xs text-stone-600 max-w-md mx-auto leading-relaxed">
-                As configured, the main screen features unlock once you fill in what the system needs to know (your role, work targets, sleep rhythm, and financial limits). No mock examples—this is your real, private daily operating system.
+                Configure your daily schedule and preferences to get started.
               </p>
             </div>
 
-            {/* Auth Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
               <button
-                onClick={handleGoogleSignIn}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors"
+                onClick={() => {
+                  setUserProfile(null);
+                }}
+                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99] cursor-pointer"
               >
-                <LogIn className="w-4 h-4" />
-                <span>Sign In with Google</span>
+                <span>Complete Setup</span>
+                <ArrowRight className="w-4 h-4 text-amber-400" />
               </button>
 
               <button
-                onClick={handleGuestSignIn}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors"
+                onClick={handleSignOut}
+                className="w-full sm:w-auto px-4 py-3 rounded-2xl border border-stone-200 hover:bg-stone-50 text-stone-600 font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <UserCheck className="w-4 h-4" />
-                <span>Try Instant Guest Mode</span>
+                <span>Sign Out</span>
               </button>
-
-              <button
-                onClick={() => setShowRulesModal(true)}
-                className="w-full sm:w-auto px-4 py-3 rounded-2xl border border-stone-200 hover:bg-stone-50 text-stone-700 font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
-              >
-                <Shield className="w-4 h-4 text-stone-500" />
-                <span>View Firebase Rules</span>
-              </button>
-            </div>
-
-            <div className="text-[11px] text-stone-500 pt-4 border-t border-stone-100 flex items-center justify-center gap-2">
-              <Shield className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Strict Firestore zero-trust security rules active. Your data belongs to you.</span>
             </div>
           </div>
         ) : (
-          /* UNLOCKED MAIN SCREEN FEATURES */
+          /* State 3: UNLOCKED MAIN SCREEN FEATURES */
           <>
-            {/* Hero: Next Best Action Card (Proposal core promise) */}
+            {/* Hero: Next Best Action Card */}
             <NextBestActionCard
               action={nextAction}
               health={health}
@@ -990,78 +1015,92 @@ export default function App() {
               isFocusRunning={isFocusRunning}
             />
 
+            {/* LIVE CROSS-PILLAR DETECTION & RECOMMENDATION ENGINE */}
+            <SystemDetectionBanner
+              recommendation={systemDetection}
+              onExecuteRecommendation={(action) => {
+                if (action.actionType === 'start_focus') {
+                  handleStartFocus(action.targetTitle || 'Priority Task Sprint', 25);
+                } else if (action.actionType === 'break') {
+                  handleTakeScreenBreak();
+                } else if (action.targetPillar) {
+                  setActiveTab(action.targetPillar as any);
+                }
+              }}
+            />
+
             {/* Navigation Tabs Bar */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b border-stone-200 text-xs font-semibold">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all ${
+                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'overview'
                     ? 'bg-stone-900 text-white shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
-                <span>Daily Pulse Overview</span>
+                <span>Overview</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('work_school')}
-                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all ${
+                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'work_school'
-                    ? 'bg-blue-600 text-white shadow-2xs'
+                    ? 'bg-stone-900 text-white shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                 }`}
               >
                 <GraduationCap className="w-4 h-4" />
-                <span>Work & School ({tasks.filter((t) => !t.completed).length})</span>
+                <span>Tasks ({tasks.filter((t) => !t.completed).length})</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('health')}
-                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all ${
+                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'health'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    ? 'bg-stone-900 text-white shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                 }`}
               >
                 <HeartPulse className="w-4 h-4" />
-                <span>Health Guardian & Rest</span>
+                <span>Health & Sleep</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('finance')}
-                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all ${
+                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'finance'
-                    ? 'bg-amber-600 text-white shadow-2xs'
+                    ? 'bg-stone-900 text-white shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                 }`}
               >
                 <Wallet className="w-4 h-4" />
-                <span>Financials ({finances.currency}{finances.dailyBudget})</span>
+                <span>Finances</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('habits')}
-                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all ${
+                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'habits'
-                    ? 'bg-purple-600 text-white shadow-2xs'
+                    ? 'bg-stone-900 text-white shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                 }`}
               >
                 <Flame className="w-4 h-4" />
-                <span>Habits & Streaks</span>
+                <span>Habits</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('analytics')}
-                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all ${
+                className={`px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === 'analytics'
                     ? 'bg-stone-900 text-white shadow-2xs'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                 }`}
               >
                 <BarChart3 className="w-4 h-4" />
-                <span>Real-time Analytics & AI Insights</span>
+                <span>Analytics</span>
               </button>
             </div>
 
@@ -1219,6 +1258,7 @@ export default function App() {
                 onToggleHabit={handleToggleHabit}
                 onAddHabit={handleAddHabit}
                 onDeleteHabit={handleDeleteHabit}
+                onStartTimer={(title, mins) => handleStartFocus(title, mins)}
               />
             )}
 
@@ -1242,30 +1282,6 @@ export default function App() {
           </>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-stone-200 bg-white py-6 mt-12 text-center text-xs text-stone-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div>
-            <span className="font-bold text-stone-900">Araw AI</span> • Powered by Firebase Project{' '}
-            <span className="font-mono font-semibold text-stone-800">arawai-5bf06</span>
-          </div>
-          <div className="flex items-center gap-4 text-[11px] text-stone-600">
-            <button
-              onClick={() => setShowRulesModal(true)}
-              className="hover:text-stone-900 underline font-medium"
-            >
-              Firestore Security Rules
-            </button>
-            <span>•</span>
-            <span>Work & School</span>
-            <span>•</span>
-            <span>Health & Rest</span>
-            <span>•</span>
-            <span>Financials</span>
-          </div>
-        </div>
-      </footer>
 
       {/* Onboarding Modal (Required to unlock features) */}
       <OnboardingModal
