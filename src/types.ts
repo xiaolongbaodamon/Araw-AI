@@ -2,10 +2,13 @@ export type PillarCategory = 'work' | 'school' | 'health' | 'finance' | 'mindful
 
 export type TaskType = 'work_task' | 'schoolwork' | 'assignment' | 'project' | 'exam_prep' | 'deliverable' | 'other';
 
+export type SchoolDay = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+
 export interface SchoolSubject {
   id: string;
   name: string;
-  weeklyMinutes: number;
+  classTime: string;
+  classDays: SchoolDay[];
 }
 
 export interface TaskItem {

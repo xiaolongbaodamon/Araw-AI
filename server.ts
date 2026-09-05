@@ -43,10 +43,10 @@ Given this user state:
 - Continuous focus time without a break: ${health?.continuousWorkMinutes || 0} minutes
 - Energy Level (1-5): ${health?.energyLevel || 3}
 - Pending Tasks: ${JSON.stringify(tasks?.filter((t: any) => !t.completed)?.slice(0, 6) || [])}
-- User Subjects and weekly study minutes: ${JSON.stringify(subjects || [])}
+- User Subjects and class schedules: ${JSON.stringify(subjects || [])}
 
 Rule 1: If continuous work is >= 75 minutes or screen time is high and energy is low (<=2), the user's next action MUST be a wellness break or hydration/walk. As Araw AI says: "Our AI doesn't just push you to do more. It learns you and protects you."
-Rule 2: Otherwise, pick the single highest leverage pending task. For schoolwork, prioritize the nearest deadline first, then use the subject's weekly study minutes to break ties.
+Rule 2: Otherwise, pick the single highest leverage pending task. For schoolwork, prioritize the nearest deadline first and consider the subject's saved class schedule when explaining timing.
 
 Return JSON adhering to schema:
 {

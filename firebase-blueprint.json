@@ -15,6 +15,7 @@
         "wakeTime": { "type": "string", "maxLength": 10 },
         "bedTime": { "type": "string", "maxLength": 10 },
         "primaryGoal": { "type": "string", "maxLength": 300 },
+        "subjects": { "type": "array", "maxItems": 30 },
         "onboardingCompleted": { "type": "boolean" },
         "createdAt": { "type": "string", "maxLength": 50 }
       },
@@ -28,6 +29,7 @@
         "userId": { "type": "string", "maxLength": 128 },
         "title": { "type": "string", "maxLength": 200 },
         "category": { "type": "string", "enum": ["work", "school"] },
+        "subject": { "type": "string", "maxLength": 100 },
         "priority": { "type": "string", "enum": ["urgent", "high", "medium", "low"] },
         "tag": { "type": "string", "maxLength": 50 },
         "estimatedMinutes": { "type": "number" },

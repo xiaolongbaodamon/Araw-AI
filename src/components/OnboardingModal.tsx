@@ -14,7 +14,9 @@ import {
   Briefcase,
   Laptop,
 } from 'lucide-react';
-import { SchoolSubject } from '../types';
+import { SchoolDay, SchoolSubject } from '../types';
+
+const schoolDays: SchoolDay[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -50,7 +52,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   const [bedTime, setBedTime] = useState('23:00');
   const [primaryGoal, setPrimaryGoal] = useState('');
   const [subjects, setSubjects] = useState<SchoolSubject[]>([
-    { id: 'subject-1', name: '', weeklyMinutes: 180 },
+    { id: 'subject-1', name: '', classTime: '07:00', classDays: [] },
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +63,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     e.preventDefault();
     if (!name.trim()) {
       setError('Please provide your name.');
+      return;
+    }
+
+    if (role === 'student' && subjects.some((subject) => subject.name.trim() && subject.classDays.length === 0)) {
+      setError('Choose at least one class day for each subject you add.');
       return;
     }
 
@@ -81,7 +88,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           ? subjects.filter((subject) => subject.name.trim()).map((subject) => ({
               ...subject,
               name: subject.name.trim(),
-              weeklyMinutes: Number(subject.weeklyMinutes) || 60,
             }))
           : [],
       });
@@ -214,23 +220,23 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 font-bold text-indigo-950">
                   <GraduationCap className="w-3.5 h-3.5 text-indigo-700" />
-                  <span>Your Subjects & Weekly Study Time</span>
+                  <span>Your Subjects & Class Schedule</span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSubjects((current) => [...current, { id: `subject-${Date.now()}`, name: '', weeklyMinutes: 180 }])}
+                  onClick={() => setSubjects((current) => [...current, { id: `subject-${Date.now()}`, name: '', classTime: '07:00', classDays: [] }])}
                   className="text-[11px] font-semibold text-indigo-700 hover:text-indigo-950"
                 >
                   + Add subject
                 </button>
               </div>
               <p className="text-[11px] text-indigo-800/80">
-                This helps Araw prioritize the subject with the nearest deadline and the least planned study time.
+                Add each subject's class time and the days it meets so Araw can understand your school schedule.
               </p>
               <div className="space-y-2">
                 <div className="grid grid-cols-[1fr_8rem_auto] gap-2 text-[10px] font-semibold uppercase tracking-wide text-indigo-800/70">
                   <span>Subject</span>
-                  <span>Minutes per week</span>
+                  <span>Class time</span>
                   <span aria-hidden="true"></span>
                 </div>
                 {subjects.map((subject, index) => (
@@ -244,14 +250,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       className="w-full px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white"
                     />
                     <input
-                      type="number"
-                      min="30"
-                      step="30"
+                      type="time"
                       required={index === 0}
-                      value={subject.weeklyMinutes}
-                      onChange={(e) => setSubjects((current) => current.map((item) => item.id === subject.id ? { ...item, weeklyMinutes: Number(e.target.value) } : item))}
+                      value={subject.classTime}
+                      onChange={(e) => setSubjects((current) => current.map((item) => item.id === subject.id ? { ...item, classTime: e.target.value } : item))}
                       className="w-full px-2.5 py-1.5 rounded-lg border border-indigo-200 bg-white"
-                      aria-label={`${subject.name || 'Subject'} weekly minutes`}
+                      aria-label={`${subject.name || 'Subject'} class time`}
                     />
                     <button
                       type="button"
@@ -261,6 +265,24 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                     >
                       Remove
                     </button>
+                    <div className="col-span-3 flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] font-semibold text-indigo-800/70 mr-1">Class days:</span>
+                      {schoolDays.map((day) => {
+                        const selected = subject.classDays.includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => setSubjects((current) => current.map((item) => item.id === subject.id
+                              ? { ...item, classDays: selected ? item.classDays.filter((itemDay) => itemDay !== day) : [...item.classDays, day] }
+                              : item))}
+                            className={`px-2 py-1 rounded-md border text-[10px] font-semibold ${selected ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-white text-indigo-800 border-indigo-200'}`}
+                          >
+                            {day.slice(0, 3)}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
