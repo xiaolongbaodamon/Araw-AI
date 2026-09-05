@@ -44,7 +44,10 @@ service cloud.firestore {
         && (!('currency' in data) || (data.currency is string && data.currency.size() <= 5))
         && (!('wakeTime' in data) || (data.wakeTime is string && data.wakeTime.size() <= 10))
         && (!('bedTime' in data) || (data.bedTime is string && data.bedTime.size() <= 10))
-        && (!('primaryGoal' in data) || (data.primaryGoal is string && data.primaryGoal.size() <= 300));
+        && (!('primaryGoal' in data) || (data.primaryGoal is string && data.primaryGoal.size() <= 300))
+        && (!('subjects' in data) || (data.subjects is list && data.subjects.size() <= 30))
+        && (!('latestInsights' in data) || (data.latestInsights is list && data.latestInsights.size() <= 20))
+        && (!('latestNextAction' in data) || data.latestNextAction is map);
     }
 
     function isValidTask(data, userId) {
@@ -56,6 +59,8 @@ service cloud.firestore {
         && (!('taskType' in data) || data.taskType in ['work_task', 'schoolwork', 'assignment', 'project', 'exam_prep', 'deliverable', 'other'])
         && (!('priority' in data) || data.priority in ['urgent', 'high', 'medium', 'low'])
         && (!('tag' in data) || (data.tag is string && data.tag.size() <= 50))
+        && (!('subject' in data) || (data.subject is string && data.subject.size() <= 100))
+        && (!('subtasks' in data) || (data.subtasks is list && data.subtasks.size() <= 100))
         && (!('estimatedMinutes' in data) || (data.estimatedMinutes is number && data.estimatedMinutes >= 0 && data.estimatedMinutes <= 1440))
         && (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 50))
         && (!('dueTime' in data) || (data.dueTime is string && data.dueTime.size() <= 20))
@@ -81,7 +86,7 @@ service cloud.firestore {
       return data.keys().hasAll(['userId', 'amount', 'type', 'category'])
         && data.userId == userId && data.userId == request.auth.uid
         && data.amount is number && data.amount > 0 && data.amount <= 100000000
-        && data.type in ['expense', 'savings']
+        && data.type in ['expense', 'income', 'savings']
         && data.category is string && data.category.size() > 0 && data.category.size() <= 100
         && (!('note' in data) || (data.note is string && data.note.size() <= 200))
         && (!('date' in data) || (data.date is string && data.date.size() <= 20));
