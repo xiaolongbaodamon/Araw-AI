@@ -1017,7 +1017,25 @@ export default function App() {
 
             {/* LIVE CROSS-PILLAR DETECTION & RECOMMENDATION ENGINE */}
             <SystemDetectionBanner
+              detectionData={systemDetection}
               recommendation={systemDetection}
+              currency={finances.currency || '₱'}
+              onSelectAction={(actionLabel) => {
+                const lower = actionLabel.toLowerCase();
+                if (lower.includes('sprint') || lower.includes('timer')) {
+                  handleStartFocus('Priority Sprint', 25);
+                } else if (lower.includes('break') || lower.includes('water') || lower.includes('stretch')) {
+                  handleTakeScreenBreak();
+                } else if (lower.includes('expense') || lower.includes('budget') || lower.includes('savings')) {
+                  setActiveTab('finance');
+                } else if (lower.includes('habit')) {
+                  setActiveTab('habits');
+                } else if (lower.includes('sleep') || lower.includes('rest') || lower.includes('health')) {
+                  setActiveTab('health');
+                } else {
+                  setActiveTab('work_school');
+                }
+              }}
               onExecuteRecommendation={(action) => {
                 if (action.actionType === 'start_focus') {
                   handleStartFocus(action.targetTitle || 'Priority Task Sprint', 25);
@@ -1025,6 +1043,9 @@ export default function App() {
                   handleTakeScreenBreak();
                 } else if (action.targetPillar) {
                   setActiveTab(action.targetPillar as any);
+                } else if (action.pillar) {
+                  const target = action.pillar === 'work_school' ? 'work_school' : action.pillar === 'health' ? 'health' : action.pillar === 'finance' ? 'finance' : 'habits';
+                  setActiveTab(target);
                 }
               }}
             />

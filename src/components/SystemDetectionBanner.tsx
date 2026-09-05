@@ -17,22 +17,32 @@ import {
 import { SystemDetectionRecommendation, PillarCategory } from '../types';
 
 interface SystemDetectionBannerProps {
-  detectionData: SystemDetectionRecommendation;
-  currency: string;
-  onSelectAction: (actionLabel: string) => void;
+  detectionData?: SystemDetectionRecommendation;
+  recommendation?: SystemDetectionRecommendation;
+  currency?: string;
+  onSelectAction?: (actionLabel: string) => void;
+  onExecuteRecommendation?: (action: any) => void;
   onRefreshRecommendations?: () => void;
   isLoading?: boolean;
 }
 
 export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
   detectionData,
-  currency,
+  recommendation,
+  currency = '₱',
   onSelectAction,
+  onExecuteRecommendation,
   onRefreshRecommendations,
   isLoading = false,
 }) => {
   const [selectedPillarFilter, setSelectedPillarFilter] = useState<'all' | PillarCategory>('all');
-  const { detections, recommendations, detectedAt } = detectionData;
+  const data = detectionData || recommendation;
+
+  if (!data || !data.detections) {
+    return null;
+  }
+
+  const { detections, recommendations = [], detectedAt } = data;
 
   const urgentDeadlines = detections.workSchool.imminentDeadlines.filter((d) => d.isUrgent);
   const sleepDeficit = detections.healthSleep.isDeficit;
@@ -310,8 +320,15 @@ export const SystemDetectionBanner: React.FC<SystemDetectionBannerProps> = ({
 
               {rec.suggestedActionLabel && (
                 <button
-                  onClick={() => onSelectAction(rec.suggestedActionLabel!)}
-                  className="w-full py-2 px-3 rounded-lg bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  onClick={() => {
+                    if (onSelectAction) {
+                      onSelectAction(rec.suggestedActionLabel!);
+                    }
+                    if (onExecuteRecommendation) {
+                      onExecuteRecommendation(rec);
+                    }
+                  }}
+                  className="w-full py-2 px-3 rounded-lg bg-amber-400 hover:bg-amber-300 text-stone-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer"
                 >
                   <span>{rec.suggestedActionLabel}</span>
                   <ChevronRight className="w-3.5 h-3.5" />
